@@ -26,8 +26,7 @@ stages:
 jobs:
   include:
   - stage: test
-    script: sbt scalafmtCheck coverage test && sbt coverageReport coverageAggregate
-      coveralls
+    script: sbt test
   - stage: formatting
     script: sbt scalafmtCheck
   - stage: release
