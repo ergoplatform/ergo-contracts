@@ -46,6 +46,7 @@ lazy val rootProject = project
 
 lazy val verifiedContracts = project
   .in(file("verified-contracts"))
+  .settings(moduleName := "verified-contracts")
   .enablePlugins(StainlessPlugin)
   .settings(commonSettings)
   .settings(
