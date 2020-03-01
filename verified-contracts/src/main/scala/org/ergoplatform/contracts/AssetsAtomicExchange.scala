@@ -9,6 +9,12 @@ import scala.language.{implicitConversions, postfixOps}
 
 sealed abstract class AssetsAtomicExchange extends SigmaContract {
 
+  /** Buyer's contract for DEX
+    * @param tokenId token id to buy
+    * @param tokenAmount token amount to buy
+    * @param pkA public key for the buyer
+    * @return
+    */
   def buyer(
     ctx: Context,
     tokenId: Coll[Byte],
@@ -32,6 +38,11 @@ sealed abstract class AssetsAtomicExchange extends SigmaContract {
     }
   }
 
+  /** Seller's contract for DEX
+    * @param ergAmount nanoERG amount seller wants to receive for the tokens
+    * @param pkB public key of the seller
+    * @return compiled contract
+    */
   def seller(ctx: Context, ergAmount: Long, pkB: SigmaProp): SigmaProp = {
     import ctx._
     pkB || (
