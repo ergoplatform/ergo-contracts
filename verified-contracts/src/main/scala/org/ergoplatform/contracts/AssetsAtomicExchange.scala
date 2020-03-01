@@ -13,7 +13,7 @@ sealed abstract class AssetsAtomicExchange extends SigmaContract {
     * @param tokenId token id to buy
     * @param tokenAmount token amount to buy
     * @param pkA public key for the buyer
-    * @return
+    * @return compiled contract
     */
   def buyer(
     ctx: Context,
