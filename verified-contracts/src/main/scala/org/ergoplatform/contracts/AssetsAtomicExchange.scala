@@ -9,20 +9,26 @@ import scala.language.{implicitConversions, postfixOps}
 
 sealed abstract class AssetsAtomicExchange extends SigmaContract {
 
-  /** Buyer's contract for DEX
+  /** DEX contract for buy order
+    * Bid order to buy a token specified by token id and amount for a price specified in a box value that
+    * will be protected by this contract. This box can be spend in two ways:
+    * 1. Buyer wants to cancel the order and return the coins (buyerPk is enough).
+    * 2. Seller creates a box with a specified token id and amount,
+    * puts this buy order box id in R4, and make it claimable by buyerPk.
+    * Used in ErgoTool "dex:BuyOrder" command.
     * @param tokenId token id to buy
     * @param tokenAmount token amount to buy
-    * @param pkA public key for the buyer
+    * @param buyerPk public key for the buyer
     * @return compiled contract
     */
   def buyer(
     ctx: Context,
     tokenId: Coll[Byte],
     tokenAmount: Long,
-    pkA: SigmaProp
+    buyerPk: SigmaProp
   ): SigmaProp = {
     import ctx._
-    pkA || {
+    buyerPk || {
       (OUTPUTS.nonEmpty && OUTPUTS(0).R4[Coll[Byte]].isDefined) && {
         val tokens = OUTPUTS(0).tokens
         val tokenDataCorrect = tokens.nonEmpty &&
@@ -30,29 +36,35 @@ sealed abstract class AssetsAtomicExchange extends SigmaContract {
           tokens(0)._2 >= tokenAmount
 
         val knownId = OUTPUTS(0).R4[Coll[Byte]].get == SELF.id
-        // TODO fix Coll.fromItems crashing Inox typer and rewrite with allOf(Coll.fromItems[Boolean](
         tokenDataCorrect &&
-        OUTPUTS(0).propositionBytes == pkA.propBytes &&
+        OUTPUTS(0).propositionBytes == buyerPk.propBytes &&
         knownId
       }
     }
   }
 
-  /** Seller's contract for DEX
+  /** DEX contract for sell order
+    * Ask order to sell a token for a specified price (ergAmount).
+    * Token is specified by token id and amount in a box that will be protected by this contract
+    * This box can be spend in two ways:
+    * 1. Seller wants to cancel the order and return the tokens (sellerPk is enough).
+    * 2. Buyer creates a box value with a specified ergAmount,
+    * puts this sell order box id in R4, and make it claimable by sellerPk.
+    * Used in ErgoTool "dex:SellOrder" command.
     * @param ergAmount nanoERG amount seller wants to receive for the tokens
-    * @param pkB public key of the seller
+    * @param sellerPk public key of the seller
     * @return compiled contract
     */
-  def seller(ctx: Context, ergAmount: Long, pkB: SigmaProp): SigmaProp = {
+  def seller(ctx: Context, ergAmount: Long, sellerPk: SigmaProp): SigmaProp = {
     import ctx._
-    pkB || (
+    sellerPk || (
       OUTPUTS.size > 1 &&
       OUTPUTS(1).R4[Coll[Byte]].isDefined
     ) && {
       val knownBoxId = OUTPUTS(1).R4[Coll[Byte]].get == SELF.id
       OUTPUTS(1).value >= ergAmount &&
       knownBoxId &&
-      OUTPUTS(1).propositionBytes == pkB.propBytes
+      OUTPUTS(1).propositionBytes == sellerPk.propBytes
     }
   }
 }
