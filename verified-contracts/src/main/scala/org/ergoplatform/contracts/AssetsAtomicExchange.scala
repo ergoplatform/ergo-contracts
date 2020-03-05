@@ -13,8 +13,8 @@ sealed abstract class AssetsAtomicExchange extends SigmaContract {
     * Bid order to buy a token specified by token id and amount for a price specified in a box value that
     * will be protected by this contract. This box can be spend in two ways:
     * 1. Buyer wants to cancel the order and return the coins (buyerPk is enough).
-    * 2. Seller creates a box with a specified token id and amount,
-    * puts this buy order box id in R4, and make it claimable by buyerPk.
+    * 2. With a box holding a specified amount of token id, with this buy order box id in it's R4,
+    * and claimable by buyerPk.
     * Used in ErgoTool "dex:BuyOrder" command.
     * @param tokenId token id to buy
     * @param tokenAmount token amount to buy
