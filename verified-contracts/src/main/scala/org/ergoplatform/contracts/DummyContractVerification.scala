@@ -80,6 +80,7 @@ case object DummyContractVerification extends DummyContract {
   } holds
 }
 
+/*
 @ignore
 case object DummyContractCompilation extends DummyContract {
 
@@ -118,3 +119,4 @@ case object DummyContractCompilation extends DummyContract {
       DummyContractVerification.contract7(context, arr)
     }
 }
+*/
