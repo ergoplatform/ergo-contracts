@@ -26,9 +26,11 @@ dynverSonatypeSnapshots in ThisBuild := true
 dynverSeparator in ThisBuild := "-"
 
 lazy val allConfigDependency = "compile->compile;test->test"
+val sigmaStateVersion = "add-ergoboxassets-trait-34536f17-SNAPSHOT"
+val ergoScalaCompilerVersion = "0.0.0-37-8372bd73-SNAPSHOT"
 
 lazy val dependencies = Seq(
-  "org.ergoplatform" %% "ergo-scala-compiler" % "0.0.0-16-77c7ec30-SNAPSHOT",
+  "org.ergoplatform" %% "ergo-scala-compiler" % ergoScalaCompilerVersion,
 )
 
 lazy val testingDependencies = Seq(
@@ -66,7 +68,7 @@ lazy val verifiedContractsTests = project
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= dependencies ++ testingDependencies 
-    ++ Seq("org.scorexfoundation" %% "sigma-state" % "3.1.1" % allConfigDependency)
+    ++ Seq("org.scorexfoundation" %% "sigma-state" % sigmaStateVersion % allConfigDependency)
   )
   .dependsOn(verifiedContracts)
   .settings(
