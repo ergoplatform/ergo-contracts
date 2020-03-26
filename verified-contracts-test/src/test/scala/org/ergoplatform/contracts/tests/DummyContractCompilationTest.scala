@@ -35,10 +35,10 @@ import special.sigma.SigmaProp
 
 class DummyContractCompilationTest extends SigmaTestingCommons with MiscGenerators {
 
+/*
   implicit lazy val IR: TestingIRContext = new TestingIRContext
 
   private val greaterThanMaxHeight = 10000000
-/*
   property("dummy contract ergo tree") {
     forAll(unsignedIntGen) { l =>
       val c            = DummyContractCompilation.contractInstance(l)

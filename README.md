@@ -4,7 +4,7 @@
 - Install Z3 SMT solver from https://github.com/Z3Prover/z3
 
 ## How to add a new contract
-
+                
 ### Create a method for the contract
 Subclass `SigmaContract` in the `verified-contracts` project and put a contract code in a method. The first parameter has to be `ctx: Context`, and subsequent parameters may be contract parameters. The return value has to be `SigmaProp`. Make the first line of the contract code `import ctx._` to improve readability.
 
@@ -12,7 +12,7 @@ Subclass `SigmaContract` in the `verified-contracts` project and put a contract 
 See [DEX buy order](http://github.com/ergoplatform/ergo-contracts/blob/71f1ef745b7ffce80272e7050a65ec4f68bfd661/verified-contracts/src/main/scala/org/ergoplatform/contracts/AssetsAtomicExchange.scala#L12-L45) for an example.
 
 ### Contract compilation
-Create a subclass (object) of the class with contract code to make "instance" method to compile the contract's code.
+Create a subclass (object) of the class with contract code to make an "instance" method to compile the contract's code.
 It'll invoke the compiler (macros) and returns a compiled contract with embedded contract parameters. Create a method with parameters from the contract (without the `Context` parameter) and invoke `ErgoContractCompiler.compile`. See [DEX buy order](http://github.com/ergoplatform/ergo-contracts/blob/71f1ef745b7ffce80272e7050a65ec4f68bfd661/verified-contracts/src/main/scala/org/ergoplatform/contracts/AssetsAtomicExchange.scala#L150-L158) for an example.
 Mark this method with `@ignore` annotation to hide it from Stainless. 
 
