@@ -35,7 +35,7 @@ import special.sigma.SigmaProp
 
 class DummyContractCompilationTest extends SigmaTestingCommons with MiscGenerators {
 
-/*
+  /*
   implicit lazy val IR: TestingIRContext = new TestingIRContext
 
   private val greaterThanMaxHeight = 10000000
@@ -192,5 +192,5 @@ class DummyContractCompilationTest extends SigmaTestingCommons with MiscGenerato
         assert(c.prop == expectedProp)
     }
   }
-*/
+ */
 }

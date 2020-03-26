@@ -158,7 +158,10 @@ object AssetsAtomicExchangeCompilation extends AssetsAtomicExchange {
     }
   }
 
-  def sellerContractInstance(ergAmount: Long, pkB: special.sigma.SigmaProp): ErgoContract = {
+  def sellerContractInstance(
+    ergAmount: Long,
+    pkB: special.sigma.SigmaProp
+  ): ErgoContract = {
     import org.ergoplatform.sigma.verified.VerifiedTypeConverters._
     ErgoScalaCompiler.contractVerified { context: Context =>
       seller(context, ergAmount, pkB)

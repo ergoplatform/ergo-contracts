@@ -119,4 +119,4 @@ case object DummyContractCompilation extends DummyContract {
       DummyContractVerification.contract7(context, arr)
     }
 }
-*/
+ */
