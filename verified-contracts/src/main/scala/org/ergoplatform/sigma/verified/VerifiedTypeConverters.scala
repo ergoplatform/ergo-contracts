@@ -15,7 +15,7 @@ import sigmastate._
 import special.collection.CollOverArrayBuilder
 import stainless.annotation.ignore
 
-import scala.language.{higherKinds, implicitConversions}
+import scala.language.implicitConversions
 
 @ignore
 object VerifiedTypeConverters {

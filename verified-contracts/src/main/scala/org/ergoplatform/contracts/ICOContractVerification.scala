@@ -4,8 +4,6 @@ import stainless.annotation._
 import stainless.lang._
 import org.ergoplatform.sigma.verified._
 
-import scala.language.implicitConversions
-
 sealed abstract class ICOContract extends SigmaContract {
 
   def ICOFundingContract(

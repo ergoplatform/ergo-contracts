@@ -5,7 +5,7 @@ import org.ergoplatform.sigma.verified._
 import stainless.annotation.ignore
 import stainless.lang._
 
-import scala.language.{implicitConversions, postfixOps}
+import scala.language.postfixOps
 
 sealed abstract class AssetsAtomicExchange extends SigmaContract {
 
@@ -93,7 +93,6 @@ case object AssetsAtomicExchangeBuyerVerification extends AssetsAtomicExchange {
     tokenAmount: Long,
     pkA: SigmaProp
   ): Boolean = {
-    import ctx._
     require(pkA.isValid)
     buyer(ctx, tokenId, tokenAmount, pkA).isValid
   } holds
@@ -104,7 +103,6 @@ case object AssetsAtomicExchangeBuyerVerification extends AssetsAtomicExchange {
     tokenAmount: Long,
     pkA: SigmaProp
   ): Boolean = {
-    import ctx._
     require(
       conditionCorrectClaimableTokenAmountAgainstBuyerBox(ctx, tokenId, tokenAmount, pkA)
     )
@@ -128,7 +126,6 @@ case object AssetsAtomicExchangeSellerVerification extends AssetsAtomicExchange 
   }
 
   def proveSellerCanClaim(ctx: Context, ergAmount: Long, pkB: SigmaProp): Boolean = {
-    import ctx._
     require(pkB.isValid)
     seller(ctx, ergAmount, pkB).isValid
   } holds
@@ -138,7 +135,6 @@ case object AssetsAtomicExchangeSellerVerification extends AssetsAtomicExchange 
     ergAmount: Long,
     pkB: SigmaProp
   ): Boolean = {
-    import ctx._
     require(conditionClaimableWithCorrectErgAmount(ctx, ergAmount, pkB))
     seller(ctx, ergAmount, pkB).isValid
   } holds

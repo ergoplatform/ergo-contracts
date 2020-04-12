@@ -27,7 +27,7 @@ dynverSeparator in ThisBuild := "-"
 
 lazy val allConfigDependency = "compile->compile;test->test"
 val sigmaStateVersion = "add-ergoboxassets-trait-34536f17-SNAPSHOT"
-val ergoScalaCompilerVersion = "0.0.0-37-8372bd73-SNAPSHOT"
+val ergoScalaCompilerVersion = "0.0.0-39-2535bf62-SNAPSHOT"
 
 lazy val dependencies = Seq(
   "org.ergoplatform" %% "ergo-scala-compiler" % ergoScalaCompilerVersion,

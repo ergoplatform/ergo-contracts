@@ -1,7 +1,6 @@
 package org.ergoplatform.contracts
 
 import org.ergoplatform.sigma.verified._
-import stainless.annotation.ignore
 import stainless.lang._
 
 import scala.language.postfixOps
