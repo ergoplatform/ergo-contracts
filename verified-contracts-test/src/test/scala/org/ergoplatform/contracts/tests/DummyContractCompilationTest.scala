@@ -1,7 +1,7 @@
 package org.ergoplatform.contracts.tests
 
 import org.ergoplatform.{Height, MiscGenerators}
-import org.ergoplatform.contracts.DummyContractCompilation
+// import org.ergoplatform.contracts.DummyContractCompilation
 import sigmastate.{
   BinAnd,
   BoolToSigmaProp,
@@ -35,10 +35,10 @@ import special.sigma.SigmaProp
 
 class DummyContractCompilationTest extends SigmaTestingCommons with MiscGenerators {
 
+  /*
   implicit lazy val IR: TestingIRContext = new TestingIRContext
 
   private val greaterThanMaxHeight = 10000000
-
   property("dummy contract ergo tree") {
     forAll(unsignedIntGen) { l =>
       val c            = DummyContractCompilation.contractInstance(l)
@@ -192,5 +192,5 @@ class DummyContractCompilationTest extends SigmaTestingCommons with MiscGenerato
         assert(c.prop == expectedProp)
     }
   }
-
+ */
 }

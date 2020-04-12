@@ -148,17 +148,24 @@ case object AssetsAtomicExchangeSellerVerification extends AssetsAtomicExchange 
 object AssetsAtomicExchangeCompilation extends AssetsAtomicExchange {
 
   def buyerContractInstance(
-    tokenId: Coll[Byte],
+    tokenId: special.collection.Coll[Byte],
     tokenAmount: Long,
-    pkA: SigmaProp
-  ): ErgoContract =
-    ErgoContractCompiler.compile { context: Context =>
+    pkA: special.sigma.SigmaProp
+  ): ErgoContract = {
+    import org.ergoplatform.sigma.verified.VerifiedTypeConverters._
+    ErgoScalaCompiler.contractVerified { context: Context =>
       buyer(context, tokenId, tokenAmount, pkA)
     }
+  }
 
-  def sellerContractInstance(ergAmount: Long, pkB: SigmaProp): ErgoContract =
-    ErgoContractCompiler.compile { context: Context =>
+  def sellerContractInstance(
+    ergAmount: Long,
+    pkB: special.sigma.SigmaProp
+  ): ErgoContract = {
+    import org.ergoplatform.sigma.verified.VerifiedTypeConverters._
+    ErgoScalaCompiler.contractVerified { context: Context =>
       seller(context, ergAmount, pkB)
     }
+  }
 
 }
