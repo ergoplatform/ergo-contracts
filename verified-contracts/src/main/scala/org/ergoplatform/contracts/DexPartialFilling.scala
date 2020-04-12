@@ -6,6 +6,7 @@ import org.ergoplatform.compiler.ErgoContract
 import sigmastate.Values.ErgoTree
 import org.ergoplatform.compiler.ErgoScalaCompiler
 
+@ignore
 final case class DexBuyerContractParameters(
   buyerPk: special.sigma.SigmaProp,
   tokenId: special.collection.Coll[Byte],
@@ -13,6 +14,7 @@ final case class DexBuyerContractParameters(
   dexFeePerToken: Long
 )
 
+@ignore
 final case class DexSellerContractParameters(
   sellerPk: special.sigma.SigmaProp,
   tokenId: special.collection.Coll[Byte],
@@ -109,7 +111,7 @@ private object DexPartialFillingErgoScript {
 }
 
 @ignore
-object DexPartialFillingCompilation {
+object DexPartialFillingContracts {
 
   def buyerContractInstance(parameters: DexBuyerContractParameters): ErgoContract =
     DexPartialFillingErgoScript.buyerContract(parameters)
