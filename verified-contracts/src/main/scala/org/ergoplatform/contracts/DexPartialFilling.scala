@@ -5,19 +5,31 @@ import stainless.annotation.ignore
 import org.ergoplatform.compiler.ErgoContract
 import sigmastate.Values.ErgoTree
 import org.ergoplatform.compiler.ErgoScalaCompiler
+import sigmastate.SLong
+import sigmastate.Values
+import sigmastate.serialization.SigmaSerializer
+import sigmastate.serialization.ErgoTreeSerializer
+import sigmastate.interpreter.CryptoConstants
+import sigmastate.basics.DLogProtocol.ProveDlog
+import sigmastate.eval.CSigmaProp
+import sigmastate.eval.Extensions.ArrayOps
+import org.ergoplatform.ErgoBox
+import sigmastate.Values.ByteArrayConstant
+import sigmastate.Values.SigmaPropConstant
+import sigmastate.basics.DLogProtocol.ProveDlogProp
 
 @ignore
 final case class DexBuyerContractParameters(
-  buyerPk: special.sigma.SigmaProp,
-  tokenId: special.collection.Coll[Byte],
+  buyerPk: ProveDlog,
+  tokenId: Array[Byte],
   tokenPrice: Long,
   dexFeePerToken: Long
 )
 
 @ignore
 final case class DexSellerContractParameters(
-  sellerPk: special.sigma.SigmaProp,
-  tokenId: special.collection.Coll[Byte],
+  sellerPk: ProveDlog,
+  tokenId: Array[Byte],
   tokenPrice: Long,
   dexFeePerToken: Long
 )
@@ -29,13 +41,20 @@ sealed abstract class DexPartialFilling {}
 private object DexPartialFillingErgoScript {
 
   def buyerContract(params: DexBuyerContractParameters): ErgoContract = {
-    val buyerContractEnv = Map("buyerPk" -> params.buyerPk, "tokenId" -> params.tokenId)
+    // both value cannot be 1, otherwise compiler reduces b = a * 1 to b = a,
+    // eliminating them from ErgoTree.constants
+    require(params.dexFeePerToken > 1, "dexFeePerToken should be > 1")
+    require(params.tokenPrice > 1, "tokenPrice should be > 1")
+    val buyerContractEnv =
+      Map(
+        "buyerPk"        -> CSigmaProp(params.buyerPk),
+        "tokenId"        -> params.tokenId.toColl,
+        "tokenPrice"     -> params.tokenPrice,
+        "dexFeePerToken" -> params.dexFeePerToken
+      )
 
     val buyerScript = s"""buyerPk || {
-
-      val tokenPrice = ${params.tokenPrice}
-      val dexFeePerToken = ${params.dexFeePerToken}
-
+                          
       val returnBox = OUTPUTS.filter { (b: Box) => 
         b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == SELF.id && b.propositionBytes == buyerPk.propBytes
       }(0)
@@ -71,11 +90,14 @@ private object DexPartialFillingErgoScript {
   def sellerContract(params: DexSellerContractParameters): ErgoContract = {
 
     val sellerContractEnv =
-      Map("sellerPk" -> params.sellerPk, "tokenId" -> params.tokenId)
+      Map(
+        "sellerPk"       -> CSigmaProp(params.sellerPk),
+        "tokenId"        -> params.tokenId.toColl,
+        "tokenPrice"     -> params.tokenPrice,
+        "dexFeePerToken" -> params.dexFeePerToken
+      )
 
     val sellerScript = s""" sellerPk || {
-      val tokenPrice = ${params.tokenPrice}
-      val dexFeePerToken = ${params.dexFeePerToken}
 
       val selfTokenAmount = SELF.tokens(0)._2
 
@@ -121,10 +143,41 @@ object DexPartialFillingContracts {
 
   def parseBuyerContractParameters(
     ergoTree: ErgoTree
-  ): Option[DexBuyerContractParameters] = ???
+  ): Option[DexBuyerContractParameters] =
+    for {
+      pk <- ergoTree.constants.headOption.collect {
+             case SigmaPropConstant(ProveDlogProp(v)) => v
+           }
+      tokenId <- ergoTree.constants.lift(5).collect {
+                  case ByteArrayConstant(coll) => coll.toArray
+                }
+      tokenPrice <- ergoTree.constants.lift(4).collect {
+                     case Values.ConstantNode(value, SLong) => value.asInstanceOf[Long]
+                   }
+      dexFeePerToken <- ergoTree.constants.lift(3).collect {
+                         case Values.ConstantNode(value, SLong) =>
+                           value.asInstanceOf[Long]
+                       }
+    } yield DexBuyerContractParameters(pk, tokenId, tokenPrice, dexFeePerToken)
 
   def parseSellerContractParameters(
     ergoTree: ErgoTree
   ): Option[DexSellerContractParameters] = ???
+
+  // TODO extract to sigma and use in appkit
+  def ergoTreeTemplateBytes(ergoTree: ErgoTree): Array[Byte] = {
+    val r = SigmaSerializer.startReader(ergoTree.bytes)
+    ErgoTreeSerializer.DefaultSerializer.deserializeHeaderWithTreeBytes(r)._4
+  }
+
+  lazy val buyerContractErgoTreeTemplate: Array[Byte] = {
+    val tokenId = Array.fill(ErgoBox.TokenId.size)(0.toByte)
+    val pk      = ProveDlog(CryptoConstants.dlogGroup.createRandomElement())
+    val params  = DexBuyerContractParameters(pk, tokenId, 2L, 2L)
+    val c       = DexPartialFillingErgoScript.buyerContract(params)
+    ergoTreeTemplateBytes(c.ergoTree)
+  }
+
+  lazy val sellerContractErgoTreeTemplate: Array[Byte] = ???
 
 }
