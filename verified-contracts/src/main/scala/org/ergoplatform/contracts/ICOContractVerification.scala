@@ -20,9 +20,7 @@ sealed abstract class ICOContract extends SigmaContract {
       getVar[Coll[Byte]](1).isDefined &&
       INPUTS
         .slice(1, INPUTS.length)
-        .forall({ (b: Box) =>
-          b.R4[Coll[Byte]].isDefined
-        }) &&
+        .forall((b: Box) => b.R4[Coll[Byte]].isDefined) &&
       SELF.R5[AvlTree].isDefined &&
       OUTPUTS(0).R5[AvlTree].isDefined
     )
@@ -34,12 +32,12 @@ sealed abstract class ICOContract extends SigmaContract {
     val proof = getVar[Coll[Byte]](1).get
     val toAdd: Coll[(Coll[Byte], Coll[Byte])] = INPUTS
       .slice(1, inputsCount)
-      .map({ (b: Box) =>
+      .map { (b: Box) =>
         // TODO avoid getOrElse
         val pk    = b.R4[Coll[Byte]].getOrElse(Coll[Byte]())
         val value = longToByteArray(b.value)
         (pk, value)
-      })
+      }
 
     val modifiedTree = SELF.R5[AvlTree].get.insert(toAdd, proof)
 
@@ -106,10 +104,12 @@ sealed abstract class ICOContract extends SigmaContract {
       OUTPUTS(0).tokens.size == 1 &&
       OUTPUTS(0).tokens(0)._1 == tokenId
 
-    val valuePreserved = outputsCountCorrect && secondOutputNoTokens && correctTokensIssued && correctTokenId
-    val stateChanged   = blake2b256(OUTPUTS(0).propositionBytes) == nextStageScriptHash
+    val valuePreserved =
+      outputsCountCorrect && secondOutputNoTokens && correctTokensIssued && correctTokenId
+    val stateChanged = blake2b256(OUTPUTS(0).propositionBytes) == nextStageScriptHash
 
-    val treeIsCorrect = digestPreserved && valueLengthPreserved && keyLengthPreserved && treeIsClosed
+    val treeIsCorrect =
+      digestPreserved && valueLengthPreserved && keyLengthPreserved && treeIsClosed
 
     projectPubKey.isValid && treeIsCorrect && valuePreserved && stateChanged
   }
@@ -137,7 +137,7 @@ sealed abstract class ICOContract extends SigmaContract {
 
     val tokenId: Coll[Byte] = SELF.R4[Coll[Byte]].get
 
-    val withdrawals: Coll[(Coll[Byte], Long)] = withdrawIndexes.map({ (idx: Int) =>
+    val withdrawals: Coll[(Coll[Byte], Long)] = withdrawIndexes.map { (idx: Int) =>
       if (idx >= 0 && idx < OUTPUTS.length) {
         val b = OUTPUTS(idx)
         if (b.tokens.nonEmpty && b.tokens(0)._1 == tokenId) {
@@ -148,30 +148,22 @@ sealed abstract class ICOContract extends SigmaContract {
       } else {
         (Coll[Byte](), 0L)
       }
-    })
+    }
 
     //val withdrawals = OUTPUTS.slice(1, OUTPUTS.size-1).map(...)
 
-    val withdrawValues = withdrawals.map({ (t: (Coll[Byte], Long)) =>
-      t._2
-    })
+    val withdrawValues = withdrawals.map((t: (Coll[Byte], Long)) => t._2)
 
-    val withdrawTotal = withdrawValues.foldLeft(0L, { (t: (Long, Long)) =>
-      t._1 + t._2
-    })
+    val withdrawTotal = withdrawValues.foldLeft(0L, (t: (Long, Long)) => t._1 + t._2)
 
-    val toRemove = withdrawals.map({ (t: (Coll[Byte], Long)) =>
-      t._1
-    })
+    val toRemove = withdrawals.map((t: (Coll[Byte], Long)) => t._1)
 
     val initialTree = SELF.R5[AvlTree].get
 
     // TODO: proper option handling
     val removedValues = initialTree
       .getMany(toRemove, lookupProof)
-      .map({ (o: Option[Coll[Byte]]) =>
-        byteArrayToLong(o.getOrElse(Coll[Byte]()))
-      })
+      .map((o: Option[Coll[Byte]]) => byteArrayToLong(o.getOrElse(Coll[Byte]())))
     val valuesCorrect = removedValues == withdrawValues
 
     val modifiedTree = initialTree.remove(toRemove, removeProof)
@@ -183,7 +175,8 @@ sealed abstract class ICOContract extends SigmaContract {
     val soutTokensCorrect   = out0.tokens.nonEmpty && out0.tokens(0)._1 == tokenId
     val soutTokensAmount    = if (soutTokensCorrect) out0.tokens(0)._2 else 0
 
-    val tokensPreserved = selfTokensCorrect && soutTokensCorrect && (soutTokensAmount + withdrawTotal == selfOutTokensAmount)
+    val tokensPreserved =
+      selfTokensCorrect && soutTokensCorrect && (soutTokensAmount + withdrawTotal == selfOutTokensAmount)
 
     val properTreeModification = modifiedTree == expectedTree
 
@@ -234,9 +227,7 @@ case object ICOContractVerification extends ICOContract {
       getVar[Coll[Byte]](1).isDefined &&
       INPUTS
         .slice(1, INPUTS.length)
-        .forall({ (b: Box) =>
-          b.R4[Coll[Byte]].isDefined
-        }) &&
+        .forall((b: Box) => b.R4[Coll[Byte]].isDefined) &&
       SELF.R5[AvlTree].isDefined &&
       OUTPUTS(0).R5[AvlTree].isDefined &&
       OUTPUTS(0).R5[AvlTree] == SELF
@@ -245,11 +236,11 @@ case object ICOContractVerification extends ICOContract {
           .insert(
             INPUTS
               .slice(1, INPUTS.length)
-              .map({ (b: Box) =>
+              .map { (b: Box) =>
                 val pk    = b.R4[Coll[Byte]].getOrElse(Coll[Byte]())
                 val value = longToByteArray(b.value)
                 (pk, value)
-              }),
+              },
             getVar[Coll[Byte]](1).get
           ) &&
       HEIGHT >= 2000 &&
@@ -274,9 +265,7 @@ case object ICOContractVerification extends ICOContract {
       getVar[Coll[Byte]](1).isDefined &&
       INPUTS
         .slice(1, INPUTS.length)
-        .forall({ (b: Box) =>
-          b.R4[Coll[Byte]].isDefined
-        }) &&
+        .forall((b: Box) => b.R4[Coll[Byte]].isDefined) &&
       SELF.R5[AvlTree].isDefined &&
       OUTPUTS(0).R5[AvlTree].isDefined &&
 
