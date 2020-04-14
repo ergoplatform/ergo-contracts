@@ -7,8 +7,6 @@ import sigmastate.Values.ErgoTree
 import org.ergoplatform.compiler.ErgoScalaCompiler
 import sigmastate.SLong
 import sigmastate.Values
-import sigmastate.serialization.SigmaSerializer
-import sigmastate.serialization.ErgoTreeSerializer
 import sigmastate.interpreter.CryptoConstants
 import sigmastate.basics.DLogProtocol.ProveDlog
 import sigmastate.eval.CSigmaProp
