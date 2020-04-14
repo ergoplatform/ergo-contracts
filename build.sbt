@@ -26,8 +26,8 @@ dynverSonatypeSnapshots in ThisBuild := true
 dynverSeparator in ThisBuild := "-"
 
 lazy val allConfigDependency = "compile->compile;test->test"
-val sigmaStateVersion = "add-ergoboxassets-trait-34536f17-SNAPSHOT"
-val ergoScalaCompilerVersion = "0.0.0-39-2535bf62-SNAPSHOT"
+val sigmaStateVersion = "add-ergotree-template-0e547557-SNAPSHOT"
+val ergoScalaCompilerVersion = "0.0.0-40-beb6ec22-SNAPSHOT"
 
 lazy val dependencies = Seq(
   "org.ergoplatform" %% "ergo-scala-compiler" % ergoScalaCompilerVersion,

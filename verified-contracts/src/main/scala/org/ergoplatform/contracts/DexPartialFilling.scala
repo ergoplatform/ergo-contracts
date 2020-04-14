@@ -183,18 +183,12 @@ object DexPartialFillingContracts {
                        }
     } yield DexSellerContractParameters(pk, tokenId, tokenPrice, dexFeePerToken)
 
-  // TODO extract to sigma and use in appkit
-  def ergoTreeTemplateBytes(ergoTree: ErgoTree): Array[Byte] = {
-    val r = SigmaSerializer.startReader(ergoTree.bytes)
-    ErgoTreeSerializer.DefaultSerializer.deserializeHeaderWithTreeBytes(r)._4
-  }
-
   lazy val buyerContractErgoTreeTemplate: Array[Byte] = {
     val tokenId = Array.fill(ErgoBox.TokenId.size)(0.toByte)
     val pk      = ProveDlog(CryptoConstants.dlogGroup.createRandomElement())
     val params  = DexBuyerContractParameters(pk, tokenId, 2L, 2L)
     val c       = DexPartialFillingErgoScript.buyerContract(params)
-    ergoTreeTemplateBytes(c.ergoTree)
+    c.ergoTree.template
   }
 
   lazy val sellerContractErgoTreeTemplate: Array[Byte] = {
@@ -202,7 +196,7 @@ object DexPartialFillingContracts {
     val pk      = ProveDlog(CryptoConstants.dlogGroup.createRandomElement())
     val params  = DexSellerContractParameters(pk, tokenId, 2L, 2L)
     val c       = DexPartialFillingErgoScript.sellerContract(params)
-    ergoTreeTemplateBytes(c.ergoTree)
+    c.ergoTree.template
   }
 
 }

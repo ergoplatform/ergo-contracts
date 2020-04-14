@@ -28,8 +28,7 @@ class DexPartialFillingCompilationTest extends SigmaTestingCommons with MiscGene
           .parseBuyerContractParameters(ergoTree)
           .get shouldEqual params
 
-        DexPartialFillingContracts.buyerContractErgoTreeTemplate shouldEqual DexPartialFillingContracts
-          .ergoTreeTemplateBytes(ergoTree)
+        DexPartialFillingContracts.buyerContractErgoTreeTemplate shouldEqual ergoTree.template
     }
   }
 
@@ -48,8 +47,7 @@ class DexPartialFillingCompilationTest extends SigmaTestingCommons with MiscGene
           .parseSellerContractParameters(ergoTree)
           .get shouldEqual params
 
-        DexPartialFillingContracts.sellerContractErgoTreeTemplate shouldEqual DexPartialFillingContracts
-          .ergoTreeTemplateBytes(ergoTree)
+        DexPartialFillingContracts.sellerContractErgoTreeTemplate shouldEqual ergoTree.template
     }
   }
 }
