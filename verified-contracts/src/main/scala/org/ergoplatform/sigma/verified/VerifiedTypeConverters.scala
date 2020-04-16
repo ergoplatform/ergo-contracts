@@ -15,7 +15,7 @@ import sigmastate._
 import special.collection.CollOverArrayBuilder
 import stainless.annotation.ignore
 
-import scala.language.{higherKinds, implicitConversions}
+import scala.language.implicitConversions
 
 @ignore
 object VerifiedTypeConverters {
@@ -109,9 +109,8 @@ object VerifiedTypeConverters {
       override def to(a: Coll[A]): EvaluatedValue[SCollection[SType]] =
         a.tItem match {
           case RType.CollType(tA) =>
-            val c = a.asInstanceOf[Coll[Coll[Any]]].toArray.map { x =>
-              VCollToErgoTree.to(x)
-            }
+            val c =
+              a.asInstanceOf[Coll[Coll[Any]]].toArray.map(x => VCollToErgoTree.to(x))
             ConcreteCollection(c, SCollectionType(rtypeToSType(tA)))
           case tA @ RType.PrimitiveType(_) =>
             val st = rtypeToSType(tA)

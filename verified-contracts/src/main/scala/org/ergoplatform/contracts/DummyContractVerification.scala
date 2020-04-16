@@ -1,11 +1,9 @@
 package org.ergoplatform.contracts
 
-import org.ergoplatform.compiler._
 import org.ergoplatform.sigma.verified._
-import stainless.annotation.ignore
 import stainless.lang._
 
-import scala.language.{implicitConversions, postfixOps}
+import scala.language.postfixOps
 
 sealed abstract class DummyContract extends SigmaContract {
 

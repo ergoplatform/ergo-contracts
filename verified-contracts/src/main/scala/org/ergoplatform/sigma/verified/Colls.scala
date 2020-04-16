@@ -1,10 +1,9 @@
 package org.ergoplatform.sigma.verified
 
 import scalan.{Internal, NeverInline}
-import stainless.annotation.{extern, induct, library, opaque, pure}
+import stainless.annotation.{extern, pure}
 import stainless.lang._
 import stainless.collection._
-import stainless.proof._
 
 import scala.collection.{immutable, mutable}
 import scala.reflect.ClassTag
