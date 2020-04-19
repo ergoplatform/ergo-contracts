@@ -2,70 +2,46 @@ package org.ergoplatform.contracts
 
 import stainless.annotation.ignore
 
-import org.ergoplatform.compiler.ErgoContract
-import sigmastate.Values.ErgoTree
-import org.ergoplatform.compiler.ErgoScalaCompiler
-import sigmastate.SLong
-import sigmastate.Values
-import sigmastate.interpreter.CryptoConstants
-import sigmastate.basics.DLogProtocol.ProveDlog
-import sigmastate.eval.CSigmaProp
-import sigmastate.eval.Extensions.ArrayOps
-import org.ergoplatform.ErgoBox
-import sigmastate.Values.ByteArrayConstant
-import sigmastate.Values.SigmaPropConstant
-import sigmastate.basics.DLogProtocol.ProveDlogProp
+import org.ergoplatform.compiler._
+import org.ergoplatform.sigma.verified._
+import stainless.annotation.ignore
+import stainless.lang._
 
-@ignore
-final case class DexBuyerContractParameters(
-  buyerPk: ProveDlog,
-  tokenId: Array[Byte],
-  tokenPrice: Long,
-  dexFeePerToken: Long
-)
+sealed abstract class DexPartialFilling extends SigmaContract {
 
-@ignore
-final case class DexSellerContractParameters(
-  sellerPk: ProveDlog,
-  tokenId: Array[Byte],
-  tokenPrice: Long,
-  dexFeePerToken: Long
-)
-
-@ignore
-sealed abstract class DexPartialFilling {}
-
-@ignore
-private object DexPartialFillingErgoScript {
-
-  def buyerContract(params: DexBuyerContractParameters): ErgoContract = {
+  def buyerContract(
+    ctx: Context,
+    buyerPk: SigmaProp,
+    tokenId: Coll[Byte],
+    tokenPrice: Long,
+    dexFeePerToken: Long
+  ): SigmaProp = {
     // both value cannot be 1, otherwise compiler reduces b = a * 1 to b = a,
     // eliminating them from the expression (and from ErgoTree.constants)
-    require(params.dexFeePerToken > 1, "dexFeePerToken should be > 1")
-    require(params.tokenPrice > 1, "tokenPrice should be > 1")
-    val buyerContractEnv =
-      Map(
-        "buyerPk"        -> CSigmaProp(params.buyerPk),
-        "tokenId"        -> params.tokenId.toColl,
-        "tokenPrice"     -> params.tokenPrice,
-        "dexFeePerToken" -> params.dexFeePerToken
-      )
+    // require(dexFeePerToken > 1)
+    // require(tokenPrice > 1)
 
-    val buyerScript = s"""buyerPk || {
-                          
-      val returnBox = OUTPUTS.filter { (b: Box) => 
-        b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == SELF.id && b.propositionBytes == buyerPk.propBytes
+    import ctx._
+
+    buyerPk || {
+
+      val returnBox = OUTPUTS.filter { (b: Box) =>
+        b.R4[Coll[Byte]].isDefined && b
+          .R4[Coll[Byte]]
+          .get == SELF.id && b.propositionBytes == buyerPk.propBytes
       }(0)
 
-      val returnTokenData = returnBox.tokens(0)
-      val returnTokenId = returnTokenData._1
-      val returnTokenAmount = returnTokenData._2
+      val returnTokenData        = returnBox.tokens(0)
+      val returnTokenId          = returnTokenData._1
+      val returnTokenAmount      = returnTokenData._2
       val maxReturnTokenErgValue = returnTokenAmount * tokenPrice
-      val totalReturnErgValue = maxReturnTokenErgValue + returnBox.value
-      val expectedDexFee = dexFeePerToken * returnTokenAmount
-      
-      val foundNewOrderBoxes = OUTPUTS.filter { (b: Box) => 
-        b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == SELF.id && b.propositionBytes == SELF.propositionBytes
+      val totalReturnErgValue    = maxReturnTokenErgValue + returnBox.value
+      val expectedDexFee         = dexFeePerToken * returnTokenAmount
+
+      val foundNewOrderBoxes = OUTPUTS.filter { (b: Box) =>
+        b.R4[Coll[Byte]].isDefined && b
+          .R4[Coll[Byte]]
+          .get == SELF.id && b.propositionBytes == SELF.propositionBytes
       }
 
       val coinsSecured = (SELF.value - expectedDexFee) == maxReturnTokenErgValue || {
@@ -73,128 +49,51 @@ private object DexPartialFillingErgoScript {
       }
 
       val tokenIdIsCorrect = returnTokenId == tokenId
-    
-      allOf(Coll(
-          tokenIdIsCorrect,
-          returnTokenAmount >= 1,
-          coinsSecured
-      ))
+
+      tokenIdIsCorrect && returnTokenAmount >= 1 && coinsSecured
     }
-      """.stripMargin
 
-    ErgoScalaCompiler.contract(buyerContractEnv, buyerScript)
-  }
-
-  def sellerContract(params: DexSellerContractParameters): ErgoContract = {
-    // both value cannot be 1, otherwise compiler reduces b = a * 1 to b = a,
-    // eliminating them from the expression (and from ErgoTree.constants)
-    require(params.dexFeePerToken > 1, "dexFeePerToken should be > 1")
-    require(params.tokenPrice > 1, "tokenPrice should be > 1")
-
-    val sellerContractEnv =
-      Map(
-        "sellerPk"       -> CSigmaProp(params.sellerPk),
-        "tokenId"        -> params.tokenId.toColl,
-        "tokenPrice"     -> params.tokenPrice,
-        "dexFeePerToken" -> params.dexFeePerToken
-      )
-
-    val sellerScript = s""" sellerPk || {
-
-      val selfTokenAmount = SELF.tokens(0)._2
-
-      val returnBox = OUTPUTS.filter { (b: Box) =>
-        b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == SELF.id && b.propositionBytes == sellerPk.propBytes
-      }(0)
-
-      val foundNewOrderBoxes = OUTPUTS.filter { (b: Box) =>
-        b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == SELF.id && b.propositionBytes == SELF.propositionBytes
-      }
-
-      (returnBox.value == selfTokenAmount * tokenPrice) || {
-        foundNewOrderBoxes.size == 1 && {
-          val newOrderBox = foundNewOrderBoxes(0)
-          val newOrderTokenData = newOrderBox.tokens(0)
-          val newOrderTokenAmount = newOrderTokenData._2
-          val soldTokenAmount = selfTokenAmount - newOrderTokenAmount
-          val minSoldTokenErgValue = soldTokenAmount * tokenPrice
-          val expectedDexFee = dexFeePerToken * soldTokenAmount
-
-          val newOrderTokenId = newOrderTokenData._1
-          val tokenIdIsCorrect = newOrderTokenId == tokenId
-
-          tokenIdIsCorrect && soldTokenAmount >= 1 && newOrderBox.value >= (SELF.value - minSoldTokenErgValue - expectedDexFee)
-        }
-      }
-
-      }""".stripMargin
-
-    ErgoScalaCompiler.contract(sellerContractEnv, sellerScript)
   }
 
 }
 
-@ignore
-object DexPartialFillingContracts {
+case object DexPartialFillingVerification extends DexPartialFilling {
 
-  def buyerContractInstance(parameters: DexBuyerContractParameters): ErgoContract =
-    DexPartialFillingErgoScript.buyerContract(parameters)
+  // private def conditionCorrectClaimableTokenAmountAgainstBuyerBox(
+  //   ctx: Context,
+  //   tokenId: Coll[Byte],
+  //   tokenAmount: Long,
+  //   pkA: SigmaProp
+  // ): Boolean = {
+  //   import ctx._
+  //   OUTPUTS.nonEmpty &&
+  //   OUTPUTS(0).tokens.nonEmpty &&
+  //   OUTPUTS(0).R4[Coll[Byte]].isDefined &&
+  //   OUTPUTS(0).tokens(0)._1 == tokenId &&
+  //   OUTPUTS(0).tokens(0)._2 >= tokenAmount &&
+  //   OUTPUTS(0).propositionBytes == pkA.propBytes &&
+  //   OUTPUTS(0).R4[Coll[Byte]].get == SELF.id
+  // }
 
-  def sellerContractInstance(parameters: DexSellerContractParameters): ErgoContract =
-    DexPartialFillingErgoScript.sellerContract(parameters)
+  // def proveBuyerCanClaim(
+  //   ctx: Context,
+  //   tokenId: Coll[Byte],
+  //   tokenAmount: Long,
+  //   pkA: SigmaProp
+  // ): Boolean = {
+  //   require(pkA.isValid)
+  //   buyer(ctx, tokenId, tokenAmount, pkA).isValid
+  // } holds
 
-  def parseBuyerContractParameters(
-    ergoTree: ErgoTree
-  ): Option[DexBuyerContractParameters] =
-    for {
-      pk <- ergoTree.constants.headOption.collect {
-             case SigmaPropConstant(ProveDlogProp(v)) => v
-           }
-      tokenId <- ergoTree.constants.lift(5).collect {
-                  case ByteArrayConstant(coll) => coll.toArray
-                }
-      tokenPrice <- ergoTree.constants.lift(4).collect {
-                     case Values.ConstantNode(value, SLong) => value.asInstanceOf[Long]
-                   }
-      dexFeePerToken <- ergoTree.constants.lift(3).collect {
-                         case Values.ConstantNode(value, SLong) =>
-                           value.asInstanceOf[Long]
-                       }
-    } yield DexBuyerContractParameters(pk, tokenId, tokenPrice, dexFeePerToken)
-
-  def parseSellerContractParameters(
-    ergoTree: ErgoTree
-  ): Option[DexSellerContractParameters] =
-    for {
-      pk <- ergoTree.constants.headOption.collect {
-             case SigmaPropConstant(ProveDlogProp(v)) => v
-           }
-      tokenId <- ergoTree.constants.lift(7).collect {
-                  case ByteArrayConstant(coll) => coll.toArray
-                }
-      tokenPrice <- ergoTree.constants.lift(3).collect {
-                     case Values.ConstantNode(value, SLong) => value.asInstanceOf[Long]
-                   }
-      dexFeePerToken <- ergoTree.constants.lift(10).collect {
-                         case Values.ConstantNode(value, SLong) =>
-                           value.asInstanceOf[Long]
-                       }
-    } yield DexSellerContractParameters(pk, tokenId, tokenPrice, dexFeePerToken)
-
-  lazy val buyerContractErgoTreeTemplate: Array[Byte] = {
-    val tokenId = Array.fill(ErgoBox.TokenId.size)(0.toByte)
-    val pk      = ProveDlog(CryptoConstants.dlogGroup.createRandomElement())
-    val params  = DexBuyerContractParameters(pk, tokenId, 2L, 2L)
-    val c       = DexPartialFillingErgoScript.buyerContract(params)
-    c.ergoTree.template
-  }
-
-  lazy val sellerContractErgoTreeTemplate: Array[Byte] = {
-    val tokenId = Array.fill(ErgoBox.TokenId.size)(0.toByte)
-    val pk      = ProveDlog(CryptoConstants.dlogGroup.createRandomElement())
-    val params  = DexSellerContractParameters(pk, tokenId, 2L, 2L)
-    val c       = DexPartialFillingErgoScript.sellerContract(params)
-    c.ergoTree.template
-  }
-
+  // def proveSpendableTokensAgainstThisOrderAnyTime(
+  //   ctx: Context,
+  //   tokenId: Coll[Byte],
+  //   tokenAmount: Long,
+  //   pkA: SigmaProp
+  // ): Boolean = {
+  //   require(
+  //     conditionCorrectClaimableTokenAmountAgainstBuyerBox(ctx, tokenId, tokenAmount, pkA)
+  //   )
+  //   buyer(ctx, tokenId, tokenAmount, pkA).isValid
+  // } holds
 }
