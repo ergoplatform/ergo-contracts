@@ -16,8 +16,8 @@ class DexLimitOrderCompilationTest extends SigmaTestingCommons with ObjectGenera
   property("ErgoScript buyer contract parameters extraction and template test") {
     forAll(
       tokenIdGen,
-      Gen.chooseNum(2L, Long.MaxValue).suchThat(_ > 1L),
-      Gen.chooseNum(2L, Long.MaxValue).suchThat(_ > 1L),
+      Gen.chooseNum(1L, Long.MaxValue),
+      Gen.chooseNum(1L, Long.MaxValue),
       proveDlogGen
     ) {
       case (tokenId, tokenPrice, dexFeePerToken, proveDlogPk) =>
@@ -35,8 +35,8 @@ class DexLimitOrderCompilationTest extends SigmaTestingCommons with ObjectGenera
   property("ErgoScript seller contract parameters extraction and template test") {
     forAll(
       tokenIdGen,
-      Gen.chooseNum(2L, Long.MaxValue).suchThat(_ > 1L),
-      Gen.chooseNum(2L, Long.MaxValue).suchThat(_ > 1L),
+      Gen.chooseNum(1L, Long.MaxValue),
+      Gen.chooseNum(1L, Long.MaxValue),
       proveDlogGen
     ) {
       case (tokenId, tokenPrice, dexFeePerToken, proveDlogPk) =>
