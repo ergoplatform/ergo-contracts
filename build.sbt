@@ -35,7 +35,8 @@ lazy val dependencies = Seq(
 
 lazy val testingDependencies = Seq(
   "org.scalatest" %% "scalatest" % "3.0.8" % Test,
-  "org.scalacheck" %% "scalacheck" % "1.14.1" % Test
+  "org.scalacheck" %% "scalacheck" % "1.14.1" % Test,
+  "org.scorexfoundation" %% "sigma-state" % sigmaStateVersion % allConfigDependency
 )
 
 lazy val rootProject = project
@@ -44,7 +45,7 @@ lazy val rootProject = project
   .settings(commonSettings)
   .settings(moduleName := "ergo-contracts")
   .settings(publish / skip := true)
-  .aggregate(verifiedContracts, verifiedContractsTests)
+  .aggregate(verifiedContracts, verifiedContractsTests, contracts)
 
 lazy val verifiedContracts = project
   .in(file("verified-contracts"))
@@ -68,11 +69,26 @@ lazy val verifiedContractsTests = project
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= dependencies ++ testingDependencies 
-    ++ Seq("org.scorexfoundation" %% "sigma-state" % sigmaStateVersion % allConfigDependency)
   )
   .dependsOn(verifiedContracts)
   .settings(
     publishArtifact := false,
+  )
+
+lazy val contracts = project
+  .in(file("contracts"))
+  .settings(moduleName := "contracts")
+  .settings(commonSettings)
+  .settings(
+    libraryDependencies ++= dependencies ++ testingDependencies
+  )
+  .settings(
+    scalacOptions ++= Seq(
+      "-Xlog-free-terms",
+    )
+  )
+  .settings(
+    publishArtifact in(Compile, packageDoc) := false,
   )
 
 lazy val commonScalacOptions = List(
