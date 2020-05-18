@@ -23,7 +23,9 @@ class DexLimitOrderCompilationTest extends SigmaTestingCommons with ObjectGenera
       case (tokenId, tokenPrice, dexFeePerToken, proveDlogPk) =>
         val params =
           DexBuyerContractParameters(proveDlogPk, tokenId, tokenPrice, dexFeePerToken)
+        // println(params)
         val ergoTree = DexLimitOrderContracts.buyerContractInstance(params).ergoTree
+        // println(ergoTree.constants.zipWithIndex)
         DexLimitOrderContracts
           .parseBuyerContractParameters(ergoTree)
           .get shouldEqual params
@@ -42,7 +44,9 @@ class DexLimitOrderCompilationTest extends SigmaTestingCommons with ObjectGenera
       case (tokenId, tokenPrice, dexFeePerToken, proveDlogPk) =>
         val params =
           DexSellerContractParameters(proveDlogPk, tokenId, tokenPrice, dexFeePerToken)
+        // println(params)
         val ergoTree = DexLimitOrderContracts.sellerContractInstance(params).ergoTree
+        // println(ergoTree.constants.zipWithIndex)
         DexLimitOrderContracts
           .parseSellerContractParameters(ergoTree)
           .get shouldEqual params

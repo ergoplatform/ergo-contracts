@@ -331,7 +331,7 @@ object DexLimitOrderContracts {
       tokenPrice <- ergoTree.constants.lift(13).collect {
                      case Values.ConstantNode(value, SLong) => value.asInstanceOf[Long]
                    }
-      dexFeePerToken <- ergoTree.constants.lift(14).collect {
+      dexFeePerToken <- ergoTree.constants.lift(15).collect {
                          case Values.ConstantNode(value, SLong) =>
                            value.asInstanceOf[Long]
                        }
@@ -350,7 +350,7 @@ object DexLimitOrderContracts {
       tokenPrice <- ergoTree.constants.lift(11).collect {
                      case Values.ConstantNode(value, SLong) => value.asInstanceOf[Long]
                    }
-      dexFeePerToken <- ergoTree.constants.lift(18).collect {
+      dexFeePerToken <- ergoTree.constants.lift(19).collect {
                          case Values.ConstantNode(value, SLong) =>
                            value.asInstanceOf[Long]
                        }

@@ -87,9 +87,6 @@ lazy val contracts = project
       "-Xlog-free-terms",
     )
   )
-  .settings(
-    publishArtifact in(Compile, packageDoc) := false,
-  )
 
 lazy val commonScalacOptions = List(
   "-deprecation",
