@@ -180,9 +180,13 @@ private object DexLimitOrderErgoScript {
         val returnBox = returnBoxes(0)
 
         val foundNewOrderBoxes = OUTPUTS.filter { (b: Box) => 
-          val contractParametersAreCorrect = b.R4[Coll[Byte]].get == tokenId && b.R5[Long].get == tokenPrice
-          val contractIsTheSame = b.propositionBytes == SELF.propositionBytes
-          b.R7[Coll[Byte]].isDefined && b.R7[Coll[Byte]].get == SELF.id && contractIsTheSame
+          val tokenIdParameterIsCorrect = b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == tokenId 
+          val tokenPriceParameterIsCorrect = b.R5[Long].isDefined && b.R5[Long].get == tokenPrice
+          val dexFeePerTokenParameterIsCorrect = b.R6[Long].isDefined && b.R6[Long].get == dexFeePerToken
+          val contractParametersAreCorrect = tokenIdParameterIsCorrect && tokenPriceParameterIsCorrect
+          val referenceMe = b.R7[Coll[Byte]].isDefined && b.R7[Coll[Byte]].get == SELF.id 
+          val guardedByTheSameContract = b.propositionBytes == SELF.propositionBytes
+          contractParametersAreCorrect && referenceMe && guardedByTheSameContract
         }
 
         val fullSpread = { (tokenAmount: Long) =>
@@ -192,7 +196,7 @@ private object DexLimitOrderErgoScript {
             val buyOrderTokenPrice = buyOrder.R5[Long].get
             val buyOrderDexFeePerToken = buyOrder.R6[Long].get
             val buyOrderTokenAmount = buyOrder.value / (buyOrderTokenPrice + buyOrderDexFeePerToken)
-            if (buyOrder.creationInfo._1 >= SELF.creationInfo._1 && buyOrderTokenPrice <= tokenPrice) {
+            if (buyOrder.creationInfo._1 > SELF.creationInfo._1 && buyOrderTokenPrice <= tokenPrice) {
               // spread is ours
               val spreadPerToken = tokenPrice - buyOrderTokenPrice
               val tokenAmountLeft = min(returnTokensLeft, buyOrderTokenAmount)
@@ -277,6 +281,40 @@ object DexLimitOrderContracts {
   def buyerContractInstance(parameters: DexBuyerContractParameters): ErgoContract =
     DexLimitOrderErgoScript.buyerContract(parameters)
 
+  /** Compiles seller's DEX limit order contract to ErgoTree
+    * Parameters:
+    * @param sellerPk seller's PK (used for canceling the contract (spending the box).
+    * @param tokenId token id seller wants to sell
+    * @param tokenPrice price per token in nanoERGs
+    * @param dexFeePerToken DEX matcher's reward (per token, nanoERGs)
+    * The value of this sell order box is expected to be = tokenAmount * dexFeePerToken
+    *
+    * Requirements for inputs.
+    * Matched buy counter order boxes should have the following properties:
+    * Registers:
+    * R4[Coll[Byte]] - token id of the sell order;
+    * R5[Long] - token price of the sell order;
+    * R6[Long] - dex fee per token;
+    * Matched buy counter orders should be ranged in inputs by their R5 (token price).
+    *
+    * Requirements for outputs.
+    * Box with ERGs for sold tokens(return box).
+    * There should be only one return box with the following properties:
+    * - R4[Coll[Byte]] == this order box id;
+    * - should be guarded only by sellerPk only;
+    * - box value should be equal to soldTokenAmount * tokenPrice + spread(if any)
+    * The spread is calculated by going through counter buy orders and taking the price difference
+    * if this order is older(strict) than counter buy order (comparing creation height).
+    *
+    * If match is partial the new(residual) sell order box have to be in outputs.
+    * There is can be only one such box in the outputs.
+    * It should have the following registers set:
+    * - R4[Coll[Byte]] = this sell order box id
+    * - R5[Long] = this sell order `tokenPrice`
+    * - R6[Long] = this sell order `dexFeePerToken`
+    * - R7[Coll[Byte]] = this sell order box id
+    * The residual box value should be (SELF.value - expectedDexFee)
+    */
   def sellerContractInstance(parameters: DexSellerContractParameters): ErgoContract =
     DexLimitOrderErgoScript.sellerContract(parameters)
 
