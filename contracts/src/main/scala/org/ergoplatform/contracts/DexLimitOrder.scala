@@ -14,6 +14,12 @@ import sigmastate.Values.ByteArrayConstant
 import sigmastate.Values.SigmaPropConstant
 import sigmastate.basics.DLogProtocol.ProveDlogProp
 
+/** Parameters for DEX limit order buyer contract
+  * @param buyerPk buyer's PK (used for canceling the contract (spending the box).
+  * @param tokenId token id buyer wants to buy
+  * @param tokenPrice price per token in nanoERGs
+  * @param dexFeePerToken DEX matcher's reward (per token, nanoERGs)
+  */
 final case class DexBuyerContractParameters(
   buyerPk: ProveDlog,
   tokenId: Array[Byte],
@@ -21,6 +27,12 @@ final case class DexBuyerContractParameters(
   dexFeePerToken: Long
 )
 
+/** Parameters for DEX limit order seller contract
+  * @param sellerPk seller's PK (used for canceling the contract (spending the box).
+  * @param tokenId token id seller wants to sell
+  * @param tokenPrice price per token in nanoERGs
+  * @param dexFeePerToken DEX matcher's reward (per token, nanoERGs)
+  */
 final case class DexSellerContractParameters(
   sellerPk: ProveDlog,
   tokenId: Array[Byte],
@@ -74,8 +86,13 @@ private object DexLimitOrderErgoScript {
         val expectedDexFee = dexFeePerToken * returnTokenAmount
         
         val foundNewOrderBoxes = OUTPUTS.filter { (b: Box) => 
-          val contractParametersAreCorrect = b.R4[Coll[Byte]].get == tokenId && b.R5[Long].get == tokenPrice
-          b.R7[Coll[Byte]].isDefined && b.R7[Coll[Byte]].get == SELF.id && b.propositionBytes == SELF.propositionBytes
+          val tokenIdParameterIsCorrect = b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == tokenId 
+          val tokenPriceParameterIsCorrect = b.R5[Long].isDefined && b.R5[Long].get == tokenPrice
+          val dexFeePerTokenParameterIsCorrect = b.R6[Long].isDefined && b.R6[Long].get == dexFeePerToken
+          val contractParametersAreCorrect = tokenIdParameterIsCorrect && tokenPriceParameterIsCorrect
+          val referenceMe = b.R7[Coll[Byte]].isDefined && b.R7[Coll[Byte]].get == SELF.id 
+          val guardedByTheSameContract = b.propositionBytes == SELF.propositionBytes
+          contractParametersAreCorrect && referenceMe && guardedByTheSameContract
         }
 
         val fullSpread = {
@@ -221,6 +238,42 @@ private object DexLimitOrderErgoScript {
 
 object DexLimitOrderContracts {
 
+  /** Compiles buyer's DEX limit order contract to ErgoTree
+    * Parameters:
+    * @param buyerPk buyer's PK (used for canceling the contract (spending the box).
+    * @param tokenId token id buyer wants to buy
+    * @param tokenPrice price per token in nanoERGs
+    * @param dexFeePerToken DEX matcher's reward (per token, nanoERGs)
+    * The value of this buy order box is expected to be = tokenAmount * (tokenPrice + dexFeePerToken)
+    *
+    * Requirements for inputs.
+    * Matched sell counter order boxes should have the following properties:
+    * Registers:
+    * R4[Coll[Byte]] - token id of the sell order;
+    * R5[Long] - token price of the sell order;
+    * Other:
+    * - box.tokens should contain only the above mentioned token id;
+    * Matched sell counter orders should be ranged in inputs by their R5 (token price).
+    *
+    * Requirements for outputs.
+    * Box with bought tokens(return box).
+    * There should be only one box with bought tokens with the following properties:
+    * - box.tokens.size == 1 and contain the bought token amount(returnTokenAmount);
+    * - R4[Coll[Byte]] == this order box id;
+    * - should be guarded only by buyerPk only;
+    * - box value should contain the spread (if there is any).
+    * The spread is calculated by going through counter sell orders and taking the price difference
+    * if this order is older or the same age as counter sell order (comparing creation height).
+    *
+    * If match is partial the new(residual) buy order box have to be in outputs.
+    * There is can be only one such box in the outputs.
+    * It should have the following registers set:
+    * - R4[Coll[Byte]] = this buy order box id
+    * - R5[Long] = this buy order `tokenPrice`
+    * - R6[Long] = this buy order `dexFeePerToken`
+    * - R7[Coll[Byte]] = this buy order box id
+    * The residual box value should be (SELF.value - returnTokenAmount * tokenPrice - expectedDexFee)
+    */
   def buyerContractInstance(parameters: DexBuyerContractParameters): ErgoContract =
     DexLimitOrderErgoScript.buyerContract(parameters)
 
