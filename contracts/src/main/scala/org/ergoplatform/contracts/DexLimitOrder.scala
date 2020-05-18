@@ -31,6 +31,10 @@ final case class DexSellerContractParameters(
 private object DexLimitOrderErgoScript {
 
   def buyerContract(params: DexBuyerContractParameters): ErgoContract = {
+    // both value cannot be 1, otherwise compiler reduces b = a * 1 to b = a,
+    // eliminating them from the expression (and from ErgoTree.constants)
+    require(params.dexFeePerToken > 1, "dexFeePerToken should be > 1")
+    require(params.tokenPrice > 1, "tokenPrice should be > 1")
     val buyerContractEnv =
       Map(
         "buyerPk"        -> CSigmaProp(params.buyerPk),
@@ -119,7 +123,10 @@ private object DexLimitOrderErgoScript {
   }
 
   def sellerContract(params: DexSellerContractParameters): ErgoContract = {
-
+    // both value cannot be 1, otherwise compiler reduces b = a * 1 to b = a,
+    // eliminating them from the expression (and from ErgoTree.constants)
+    require(params.dexFeePerToken > 1, "dexFeePerToken should be > 1")
+    require(params.tokenPrice > 1, "tokenPrice should be > 1")
     val sellerContractEnv =
       Map(
         "sellerPk"       -> CSigmaProp(params.sellerPk),
@@ -227,13 +234,13 @@ object DexLimitOrderContracts {
       pk <- ergoTree.constants.headOption.collect {
              case SigmaPropConstant(ProveDlogProp(v)) => v
            }
-      tokenId <- ergoTree.constants.lift(5).collect {
+      tokenId <- ergoTree.constants.lift(1).collect {
                   case ByteArrayConstant(coll) => coll.toArray
                 }
-      tokenPrice <- ergoTree.constants.lift(4).collect {
+      tokenPrice <- ergoTree.constants.lift(13).collect {
                      case Values.ConstantNode(value, SLong) => value.asInstanceOf[Long]
                    }
-      dexFeePerToken <- ergoTree.constants.lift(3).collect {
+      dexFeePerToken <- ergoTree.constants.lift(14).collect {
                          case Values.ConstantNode(value, SLong) =>
                            value.asInstanceOf[Long]
                        }
@@ -246,13 +253,13 @@ object DexLimitOrderContracts {
       pk <- ergoTree.constants.headOption.collect {
              case SigmaPropConstant(ProveDlogProp(v)) => v
            }
-      tokenId <- ergoTree.constants.lift(7).collect {
+      tokenId <- ergoTree.constants.lift(1).collect {
                   case ByteArrayConstant(coll) => coll.toArray
                 }
-      tokenPrice <- ergoTree.constants.lift(3).collect {
+      tokenPrice <- ergoTree.constants.lift(11).collect {
                      case Values.ConstantNode(value, SLong) => value.asInstanceOf[Long]
                    }
-      dexFeePerToken <- ergoTree.constants.lift(10).collect {
+      dexFeePerToken <- ergoTree.constants.lift(18).collect {
                          case Values.ConstantNode(value, SLong) =>
                            value.asInstanceOf[Long]
                        }
