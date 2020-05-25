@@ -25,6 +25,8 @@ import sigmastate.Values.ByteArrayConstant
 import org.ergoplatform.DataInput
 import org.ergoplatform.Input
 import sigmastate.Values.LongConstant
+import org.ergoplatform.ErgoAddress
+import org.ergoplatform.P2PKAddress
 
 class DexLimitOrderTest extends SigmaTestingCommons with ObjectGenerators {
 
@@ -55,11 +57,13 @@ class DexLimitOrderTest extends SigmaTestingCommons with ObjectGenerators {
     // fail fast without shrinking
     import org.scalacheck.Shrink.shrinkAny
 
+    val maxTokenAmount = 1000L
+
     forAll(
       tokenIdGen,
-      Gen.chooseNum(2L, 100000).suchThat(_ > 1L),
-      Gen.chooseNum(2L, 100000).suchThat(_ > 1L),
-      Gen.chooseNum(1L, 100)
+      Gen.chooseNum(2L, Long.MaxValue / (2 * maxTokenAmount)).suchThat(_ > 1L),
+      Gen.chooseNum(2L, Long.MaxValue / (2 * maxTokenAmount)).suchThat(_ > 1L),
+      Gen.chooseNum(1L, maxTokenAmount)
     ) {
       case (tokenId, tokenPrice, dexFeePerToken, tokenAmount) =>
         val buyOrderContractParams =
