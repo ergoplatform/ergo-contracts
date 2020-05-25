@@ -1,4 +1,4 @@
-package org.ergoplatform.contracts.tests
+package org.ergoplatform.contracts.tests.dex
 
 import org.ergoplatform.contracts.{
   DexBuyerContractParameters,
