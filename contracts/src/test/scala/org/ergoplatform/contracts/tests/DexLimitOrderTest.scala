@@ -32,32 +32,17 @@ class DexLimitOrderTest extends SigmaTestingCommons with ObjectGenerators {
 
   implicit lazy val IR: TestingIRContext = new TestingIRContext
 
-  // private def ctx(
-  //   height: Int,
-  //   tx: ErgoLikeTransaction,
-  //   selfBox: ErgoBox
-  // ): ErgoLikeContext =
-  //   ErgoLikeContextTesting(
-  //     currentHeight       = height,
-  //     lastBlockUtxoRoot   = AvlTreeData.dummy,
-  //     minerPubkey         = ErgoLikeContextTesting.dummyPubkey,
-  //     boxesToSpend        = IndexedSeq(selfBox),
-  //     spendingTransaction = tx,
-  //     self                = selfBox
-  //   )
-
-  // implicit private def toSigmaContext(ergoCtx: ErgoLikeContext): special.sigma.Context =
-  //   ergoCtx.toSigmaContext(IR, false)
+  val maxTokenAmount = 1000L
 
   property("buy order total matching") {
     val verifier = new ErgoLikeTestInterpreter
-    val prover   = new ContextEnrichingTestProvingInterpreter
-    val pubkey   = prover.dlogSecrets.head.publicImage
+    val buyerPk =
+      (new ContextEnrichingTestProvingInterpreter).dlogSecrets.head.publicImage
+    val sellerPk =
+      (new ContextEnrichingTestProvingInterpreter).dlogSecrets.head.publicImage
 
     // fail fast without shrinking
     import org.scalacheck.Shrink.shrinkAny
-
-    val maxTokenAmount = 1000L
 
     forAll(
       tokenIdGen,
@@ -67,7 +52,7 @@ class DexLimitOrderTest extends SigmaTestingCommons with ObjectGenerators {
     ) {
       case (tokenId, tokenPrice, dexFeePerToken, tokenAmount) =>
         val buyOrderContractParams =
-          DexBuyerContractParameters(pubkey, tokenId, tokenPrice, dexFeePerToken)
+          DexBuyerContractParameters(buyerPk, tokenId, tokenPrice, dexFeePerToken)
 
         val buyOrderContract =
           DexLimitOrderContracts.buyerContractInstance(buyOrderContractParams)
@@ -79,7 +64,7 @@ class DexLimitOrderTest extends SigmaTestingCommons with ObjectGenerators {
         )
 
         val sellOrderContractParams =
-          DexSellerContractParameters(pubkey, tokenId, tokenPrice, dexFeePerToken)
+          DexSellerContractParameters(sellerPk, tokenId, tokenPrice, dexFeePerToken)
 
         val sellOrderContract =
           DexLimitOrderContracts.sellerContractInstance(sellOrderContractParams)
@@ -96,8 +81,8 @@ class DexLimitOrderTest extends SigmaTestingCommons with ObjectGenerators {
         )
 
         val returnBox = ErgoBox(
-          value               = 1, // TODO: min fee?
-          ergoTree            = pubkey,
+          value               = 1,
+          ergoTree            = buyerPk,
           creationHeight      = 0,
           additionalTokens    = Seq((Digest32 @@ tokenId, tokenAmount)),
           additionalRegisters = Map(ErgoBox.R4 -> ByteArrayConstant(selfBox.id))
@@ -123,6 +108,89 @@ class DexLimitOrderTest extends SigmaTestingCommons with ObjectGenerators {
           .get
         res shouldBe true
         println(s"buy order contract cost: $cost")
+        cost should be < 110000L
+    }
+  }
+
+  property("sell order total matching") {
+    val verifier = new ErgoLikeTestInterpreter
+    val buyerPk =
+      (new ContextEnrichingTestProvingInterpreter).dlogSecrets.head.publicImage
+    val sellerPk =
+      (new ContextEnrichingTestProvingInterpreter).dlogSecrets.head.publicImage
+
+    // fail fast without shrinking
+    import org.scalacheck.Shrink.shrinkAny
+
+    forAll(
+      tokenIdGen,
+      Gen.chooseNum(2L, Long.MaxValue / (2 * maxTokenAmount)).suchThat(_ > 1L),
+      Gen.chooseNum(2L, Long.MaxValue / (2 * maxTokenAmount)).suchThat(_ > 1L),
+      Gen.chooseNum(1L, maxTokenAmount)
+    ) {
+      case (tokenId, tokenPrice, dexFeePerToken, tokenAmount) =>
+        val buyOrderContractParams =
+          DexBuyerContractParameters(buyerPk, tokenId, tokenPrice, dexFeePerToken)
+
+        val buyOrderContract =
+          DexLimitOrderContracts.buyerContractInstance(buyOrderContractParams)
+
+        val buyOrderBox = ErgoBox(
+          value          = tokenAmount * (tokenPrice + dexFeePerToken),
+          ergoTree       = buyOrderContract.ergoTree,
+          creationHeight = 0,
+          additionalRegisters = Map(
+            ErgoBox.R4 -> ByteArrayConstant(tokenId),
+            ErgoBox.R5 -> LongConstant(tokenPrice),
+            ErgoBox.R6 -> LongConstant(dexFeePerToken)
+          )
+        )
+
+        val sellOrderContractParams =
+          DexSellerContractParameters(sellerPk, tokenId, tokenPrice, dexFeePerToken)
+
+        val sellOrderContract =
+          DexLimitOrderContracts.sellerContractInstance(sellOrderContractParams)
+
+        val sellOrderBox = ErgoBox(
+          value            = tokenAmount * dexFeePerToken,
+          ergoTree         = sellOrderContract.ergoTree,
+          creationHeight   = 0,
+          additionalTokens = Seq((Digest32 @@ tokenId, tokenAmount)),
+          additionalRegisters = Map(
+            ErgoBox.R4 -> ByteArrayConstant(tokenId),
+            ErgoBox.R5 -> LongConstant(tokenPrice)
+          )
+        )
+
+        val returnBox = ErgoBox(
+          value               = tokenPrice * tokenAmount,
+          ergoTree            = sellerPk,
+          creationHeight      = 0,
+          additionalTokens    = Seq((Digest32 @@ tokenId, tokenAmount)),
+          additionalRegisters = Map(ErgoBox.R4 -> ByteArrayConstant(sellOrderBox.id))
+        )
+
+        val tx = new ErgoLikeTransaction(
+          IndexedSeq(buyOrderBox).map(b => Input(b.id, ProverResult.empty)),
+          IndexedSeq(),
+          IndexedSeq(returnBox)
+        )
+
+        val context = ErgoLikeContextTesting(
+          currentHeight       = 0,
+          lastBlockUtxoRoot   = AvlTreeData.dummy,
+          minerPubkey         = ErgoLikeContextTesting.dummyPubkey,
+          boxesToSpend        = IndexedSeq(sellOrderBox, buyOrderBox),
+          spendingTransaction = tx,
+          self                = sellOrderBox
+        )
+
+        val (res, cost) = verifier
+          .verify(sellOrderBox.ergoTree, context, ProverResult.empty, fakeMessage)
+          .get
+        res shouldBe true
+        println(s"sell order contract cost: $cost")
         cost should be < 110000L
     }
   }
