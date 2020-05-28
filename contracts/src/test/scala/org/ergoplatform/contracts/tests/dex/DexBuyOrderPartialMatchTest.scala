@@ -28,7 +28,7 @@ import sigmastate.Values.LongConstant
 import org.ergoplatform.ErgoAddress
 import org.ergoplatform.P2PKAddress
 
-class DexLimitOrderTest
+class DexBuyOrderPartialMatchTest
   extends SigmaTestingCommons
   with ObjectGenerators
   with DexTestingCommons {
