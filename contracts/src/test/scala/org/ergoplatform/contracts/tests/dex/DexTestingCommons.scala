@@ -33,7 +33,7 @@ trait DexTestingCommons extends SigmaTestingCommons {
   implicit lazy val IR: TestingIRContext = new TestingIRContext
 
   val maxTokenAmount          = 1000L
-  val buyerContractCostLimit  = 110000L
-  val sellerContractCostLimit = 110000L
+  val buyerContractCostLimit  = 120000L
+  val sellerContractCostLimit = 120000L
 
 }

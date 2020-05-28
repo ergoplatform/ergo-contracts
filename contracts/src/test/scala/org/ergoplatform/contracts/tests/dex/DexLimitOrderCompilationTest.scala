@@ -12,6 +12,8 @@ import sigmastate.serialization.generators.ObjectGenerators
 import scala.language.implicitConversions
 
 class DexLimitOrderCompilationTest extends SigmaTestingCommons with ObjectGenerators {
+  // fail fast without shrinking
+  import org.scalacheck.Shrink.shrinkAny
 
   property("ErgoScript buyer contract parameters extraction and template test") {
     forAll(
@@ -44,9 +46,9 @@ class DexLimitOrderCompilationTest extends SigmaTestingCommons with ObjectGenera
       case (tokenId, tokenPrice, dexFeePerToken, proveDlogPk) =>
         val params =
           DexSellerContractParameters(proveDlogPk, tokenId, tokenPrice, dexFeePerToken)
-        // println(params)
+        println(params)
         val ergoTree = DexLimitOrderContracts.sellerContractInstance(params).ergoTree
-        // println(ergoTree.constants.zipWithIndex)
+        println(ergoTree.constants.zipWithIndex)
         DexLimitOrderContracts
           .parseSellerContractParameters(ergoTree)
           .get shouldEqual params

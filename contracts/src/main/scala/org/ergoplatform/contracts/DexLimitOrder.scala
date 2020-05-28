@@ -89,7 +89,7 @@ private object DexLimitOrderErgoScript {
           val tokenIdParameterIsCorrect = b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == tokenId 
           val tokenPriceParameterIsCorrect = b.R5[Long].isDefined && b.R5[Long].get == tokenPrice
           val dexFeePerTokenParameterIsCorrect = b.R6[Long].isDefined && b.R6[Long].get == dexFeePerToken
-          val contractParametersAreCorrect = tokenIdParameterIsCorrect && tokenPriceParameterIsCorrect
+          val contractParametersAreCorrect = tokenIdParameterIsCorrect && tokenPriceParameterIsCorrect && dexFeePerTokenParameterIsCorrect
           val referenceMe = b.R7[Coll[Byte]].isDefined && b.R7[Coll[Byte]].get == SELF.id 
           val guardedByTheSameContract = b.propositionBytes == SELF.propositionBytes
           contractParametersAreCorrect && referenceMe && guardedByTheSameContract
@@ -183,7 +183,7 @@ private object DexLimitOrderErgoScript {
           val tokenIdParameterIsCorrect = b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == tokenId 
           val tokenPriceParameterIsCorrect = b.R5[Long].isDefined && b.R5[Long].get == tokenPrice
           val dexFeePerTokenParameterIsCorrect = b.R6[Long].isDefined && b.R6[Long].get == dexFeePerToken
-          val contractParametersAreCorrect = tokenIdParameterIsCorrect && tokenPriceParameterIsCorrect
+          val contractParametersAreCorrect = tokenIdParameterIsCorrect && tokenPriceParameterIsCorrect && dexFeePerTokenParameterIsCorrect
           val referenceMe = b.R7[Coll[Byte]].isDefined && b.R7[Coll[Byte]].get == SELF.id 
           val guardedByTheSameContract = b.propositionBytes == SELF.propositionBytes
           contractParametersAreCorrect && referenceMe && guardedByTheSameContract
@@ -331,7 +331,7 @@ object DexLimitOrderContracts {
       tokenPrice <- ergoTree.constants.lift(13).collect {
                      case Values.ConstantNode(value, SLong) => value.asInstanceOf[Long]
                    }
-      dexFeePerToken <- ergoTree.constants.lift(15).collect {
+      dexFeePerToken <- ergoTree.constants.lift(14).collect {
                          case Values.ConstantNode(value, SLong) =>
                            value.asInstanceOf[Long]
                        }
@@ -350,7 +350,7 @@ object DexLimitOrderContracts {
       tokenPrice <- ergoTree.constants.lift(11).collect {
                      case Values.ConstantNode(value, SLong) => value.asInstanceOf[Long]
                    }
-      dexFeePerToken <- ergoTree.constants.lift(19).collect {
+      dexFeePerToken <- ergoTree.constants.lift(14).collect {
                          case Values.ConstantNode(value, SLong) =>
                            value.asInstanceOf[Long]
                        }
