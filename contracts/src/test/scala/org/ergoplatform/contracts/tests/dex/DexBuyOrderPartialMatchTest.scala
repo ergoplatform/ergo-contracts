@@ -274,6 +274,22 @@ class DexLimitOrderTest
         .get
         ._1
 
+    // incorrect value
+    verifyWithResidualOrder(
+      ErgoBox(
+        value =
+          (tokenAmount - partialMatchTokenAmount) * (tokenPrice + dexFeePerToken) - 1,
+        ergoTree       = buyOrderContract.ergoTree,
+        creationHeight = 0,
+        additionalRegisters = Map(
+          ErgoBox.R4 -> ByteArrayConstant(tokenId),
+          ErgoBox.R5 -> LongConstant(tokenPrice),
+          ErgoBox.R6 -> LongConstant(dexFeePerToken),
+          ErgoBox.R7 -> ByteArrayConstant(buyOrderBox.id)
+        )
+      )
+    ) shouldBe false
+
     // incorrect contract
     verifyWithResidualOrder(
       ErgoBox(
