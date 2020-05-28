@@ -366,4 +366,120 @@ class DexBuyOrderPartialMatchTest
     ) shouldBe false
 
   }
+
+  property("buy order, sorting of counter orders") {
+    val verifier = new ErgoLikeTestInterpreter
+    val buyerPk =
+      (new ContextEnrichingTestProvingInterpreter).dlogSecrets.head.publicImage
+    val sellerPk =
+      (new ContextEnrichingTestProvingInterpreter).dlogSecrets.head.publicImage
+
+    val tokenId           = tokenIdGen.sample.get
+    val buyerTokenPrice   = 20000000L
+    val seller1TokenPrice = 18000000L
+    val seller2TokenPrice = 19000000L
+    val dexFeePerToken    = 1000000L
+    val tokenAmount       = 100L
+
+    val buyOrderContractParams =
+      DexBuyerContractParameters(buyerPk, tokenId, buyerTokenPrice, dexFeePerToken)
+
+    val buyOrderContract =
+      DexLimitOrderContracts.buyerContractInstance(buyOrderContractParams)
+
+    val buyOrderBox = ErgoBox(
+      value          = tokenAmount * (buyerTokenPrice + dexFeePerToken),
+      ergoTree       = buyOrderContract.ergoTree,
+      creationHeight = 0
+    )
+
+    val partialMatchTokenAmount = tokenAmount / 2
+
+    val residualBuyOrderBox = ErgoBox(
+      value =
+        (tokenAmount - partialMatchTokenAmount) * (buyerTokenPrice + dexFeePerToken),
+      ergoTree       = buyOrderContract.ergoTree,
+      creationHeight = 0,
+      additionalRegisters = Map(
+        ErgoBox.R4 -> ByteArrayConstant(tokenId),
+        ErgoBox.R5 -> LongConstant(buyerTokenPrice),
+        ErgoBox.R6 -> LongConstant(dexFeePerToken),
+        ErgoBox.R7 -> ByteArrayConstant(buyOrderBox.id)
+      )
+    )
+
+    val seller1OrderBox = ErgoBox(
+      value = tokenAmount * dexFeePerToken,
+      ergoTree = DexLimitOrderContracts
+        .sellerContractInstance(
+          DexSellerContractParameters(
+            sellerPk,
+            tokenId,
+            seller1TokenPrice,
+            dexFeePerToken
+          )
+        )
+        .ergoTree,
+      creationHeight   = 0,
+      additionalTokens = Seq((Digest32 @@ tokenId, tokenAmount)),
+      additionalRegisters = Map(
+        ErgoBox.R4 -> ByteArrayConstant(tokenId),
+        ErgoBox.R5 -> LongConstant(seller1TokenPrice)
+      )
+    )
+
+    val seller2OrderBox = ErgoBox(
+      value = tokenAmount * dexFeePerToken,
+      ergoTree = DexLimitOrderContracts
+        .sellerContractInstance(
+          DexSellerContractParameters(
+            sellerPk,
+            tokenId,
+            seller2TokenPrice,
+            dexFeePerToken
+          )
+        )
+        .ergoTree,
+      creationHeight   = 0,
+      additionalTokens = Seq((Digest32 @@ tokenId, tokenAmount)),
+      additionalRegisters = Map(
+        ErgoBox.R4 -> ByteArrayConstant(tokenId),
+        ErgoBox.R5 -> LongConstant(seller2TokenPrice)
+      )
+    )
+
+    val returnBox = ErgoBox(
+      value =
+        partialMatchTokenAmount * (buyerTokenPrice - seller1TokenPrice), // return the spread
+      ergoTree            = buyerPk,
+      creationHeight      = 0,
+      additionalTokens    = Seq((Digest32 @@ tokenId, partialMatchTokenAmount)),
+      additionalRegisters = Map(ErgoBox.R4 -> ByteArrayConstant(buyOrderBox.id))
+    )
+
+    def verifySpendingBoxes(boxesToSpend: IndexedSeq[ErgoBox]): Boolean =
+      verifier
+        .verify(
+          buyOrderBox.ergoTree,
+          ErgoLikeContextTesting(
+            currentHeight     = 0,
+            lastBlockUtxoRoot = AvlTreeData.dummy,
+            minerPubkey       = ErgoLikeContextTesting.dummyPubkey,
+            boxesToSpend      = boxesToSpend,
+            spendingTransaction = new ErgoLikeTransaction(
+              boxesToSpend.map(b => Input(b.id, ProverResult.empty)),
+              IndexedSeq(),
+              IndexedSeq(returnBox, residualBuyOrderBox)
+            ),
+            self = buyOrderBox
+          ),
+          ProverResult.empty,
+          fakeMessage
+        )
+        .get
+        ._1
+
+    verifySpendingBoxes(IndexedSeq(seller1OrderBox, seller2OrderBox, buyOrderBox)) shouldBe true
+    verifySpendingBoxes(IndexedSeq(seller2OrderBox, seller1OrderBox, buyOrderBox)) shouldBe false
+  }
 }
