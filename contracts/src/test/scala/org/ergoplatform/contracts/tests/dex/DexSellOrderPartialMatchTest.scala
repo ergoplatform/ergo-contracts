@@ -416,8 +416,8 @@ class DexSellOrderPartialMatchTest
 
     val tokenId          = tokenIdGen.sample.get
     val sellerTokenPrice = 20000000L
-    val buyer1TokenPrice = 21000000L
-    val buyer2TokenPrice = 22000000L
+    val buyer1TokenPrice = 22000000L
+    val buyer2TokenPrice = 21000000L
     val dexFeePerToken   = 1000000L
     val tokenAmount      = 100L
 

@@ -171,12 +171,14 @@ private object DexLimitOrderErgoScript {
         referencesMe && canSpend      
       }
 
+      // sorted in descending order
       val boxesAreSortedByTokenPrice = { (boxes: Coll[Box]) => 
-        boxes.fold((0L, true), { (t: (Long, Boolean), box: Box) => 
+        boxes.size > 0 &&
+        boxes.fold((boxes(0).value, true), { (t: (Long, Boolean), box: Box) => 
           val prevBoxTokenPrice = t._1
           val isSorted = t._2
           val boxTokenPrice = box.R5[Long].getOrElse(0L)
-          (boxTokenPrice, isSorted && boxTokenPrice >= prevBoxTokenPrice)
+          (boxTokenPrice, isSorted && boxTokenPrice <= prevBoxTokenPrice)
         })._2
       }
 
@@ -212,11 +214,11 @@ private object DexLimitOrderErgoScript {
             val buyOrderTokenPrice = buyOrder.R5[Long].get
             val buyOrderDexFeePerToken = buyOrder.R6[Long].get
             val buyOrderTokenAmount = buyOrder.value / (buyOrderTokenPrice + buyOrderDexFeePerToken)
-            val priceIsCorrect = buyOrderTokenPrice <= tokenPrice
+            val priceIsCorrect = buyOrderTokenPrice >= tokenPrice
             val tokenAmountInThisOrder = min(returnTokensLeft, buyOrderTokenAmount)
             if (buyOrder.creationInfo._1 > SELF.creationInfo._1 && priceIsCorrect) {
               // spread is ours
-              val spreadPerToken = tokenPrice - buyOrderTokenPrice
+              val spreadPerToken = buyOrderTokenPrice - tokenPrice
               val buyOrderSpread = spreadPerToken * tokenAmountInThisOrder
               (returnTokensLeft - tokenAmountInThisOrder, accumulatedFullSpread + buyOrderSpread)
             }
@@ -367,10 +369,10 @@ object DexLimitOrderContracts {
       tokenId <- ergoTree.constants.lift(1).collect {
                   case ByteArrayConstant(coll) => coll.toArray
                 }
-      tokenPrice <- ergoTree.constants.lift(11).collect {
+      tokenPrice <- ergoTree.constants.lift(12).collect {
                      case Values.ConstantNode(value, SLong) => value.asInstanceOf[Long]
                    }
-      dexFeePerToken <- ergoTree.constants.lift(14).collect {
+      dexFeePerToken <- ergoTree.constants.lift(15).collect {
                          case Values.ConstantNode(value, SLong) =>
                            value.asInstanceOf[Long]
                        }
