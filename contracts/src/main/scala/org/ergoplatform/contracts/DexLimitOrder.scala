@@ -67,7 +67,9 @@ private object DexLimitOrderErgoScript {
       }
 
       val returnBoxes = OUTPUTS.filter { (b: Box) => 
-        b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == SELF.id && b.propositionBytes == buyerPk.propBytes
+        val referencesMe = b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == SELF.id 
+        val canSpend = b.propositionBytes == buyerPk.propBytes
+        referencesMe&& canSpend      
       }
 
       val boxesAreSortedByTokenPrice = { (boxes: Coll[Box]) => 
@@ -79,20 +81,24 @@ private object DexLimitOrderErgoScript {
         })._2
       }
 
-      returnBoxes.size == 1 && spendingSellOrders.size > 0 && boxesAreSortedByTokenPrice(spendingSellOrders) && {
+      returnBoxes.size == 1 && 
+        spendingSellOrders.size > 0 && 
+        boxesAreSortedByTokenPrice(spendingSellOrders) && {
+
         val returnBox = returnBoxes(0)
         val returnTokenAmount = if (returnBox.tokens.size == 1) returnBox.tokens(0)._2 else 0L
         
         val expectedDexFee = dexFeePerToken * returnTokenAmount
         
-        val foundNewOrderBoxes = OUTPUTS.filter { (b: Box) => 
-          val tokenIdParameterIsCorrect = b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == tokenId 
-          val tokenPriceParameterIsCorrect = b.R5[Long].isDefined && b.R5[Long].get == tokenPrice
-          val dexFeePerTokenParameterIsCorrect = b.R6[Long].isDefined && b.R6[Long].get == dexFeePerToken
-          val contractParametersAreCorrect = tokenIdParameterIsCorrect && tokenPriceParameterIsCorrect && dexFeePerTokenParameterIsCorrect
+        val foundResidualOrderBoxes = OUTPUTS.filter { (b: Box) => 
+          val tokenIdParamIsCorrect = b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == tokenId 
+          val tokenPriceParamIsCorrect = b.R5[Long].isDefined && b.R5[Long].get == tokenPrice
+          val dexFeePerTokenParamIsCorrect = b.R6[Long].isDefined && b.R6[Long].get == dexFeePerToken
+          val contractParamsAreCorrect = tokenIdParamIsCorrect && 
+            tokenPriceParamIsCorrect && dexFeePerTokenParamIsCorrect
           val referenceMe = b.R7[Coll[Byte]].isDefined && b.R7[Coll[Byte]].get == SELF.id 
           val guardedByTheSameContract = b.propositionBytes == SELF.propositionBytes
-          contractParametersAreCorrect && referenceMe && guardedByTheSameContract
+          contractParamsAreCorrect && referenceMe && guardedByTheSameContract
         }
 
         val fullSpread = {
@@ -101,7 +107,8 @@ private object DexLimitOrderErgoScript {
             val accumulatedFullSpread = t._2
             val sellOrderTokenPrice = sellOrder.R5[Long].get
             val sellOrderTokenAmount = sellOrder.tokens(0)._2
-            if (sellOrder.creationInfo._1 >= SELF.creationInfo._1 && sellOrderTokenPrice <= tokenPrice) {
+            val priceIsCorrect = sellOrderTokenPrice <= tokenPrice
+            if (sellOrder.creationInfo._1 >= SELF.creationInfo._1 && priceIsCorrect) {
               // spread is ours
               val spreadPerToken = tokenPrice - sellOrderTokenPrice
               val tokenAmount = min(returnTokensLeft, sellOrderTokenAmount)
@@ -115,11 +122,13 @@ private object DexLimitOrderErgoScript {
           })._2
         }
 
-        val totalMatching = (SELF.value - expectedDexFee) == returnTokenAmount * tokenPrice && 
+        val returnTokenValue = returnTokenAmount * tokenPrice
+        val totalMatching = (SELF.value - expectedDexFee) == returnTokenValue && 
           returnBox.value >= fullSpread
         val partialMatching = {
-          foundNewOrderBoxes.size == 1 && 
-            foundNewOrderBoxes(0).value == (SELF.value - returnTokenAmount * tokenPrice - expectedDexFee) &&
+          val correctResidualOrderBoxValue = (SELF.value - returnTokenValue - expectedDexFee)
+          foundResidualOrderBoxes.size == 1 && 
+            foundResidualOrderBoxes(0).value == correctResidualOrderBoxValue && 
             returnBox.value >= fullSpread
         }
 
