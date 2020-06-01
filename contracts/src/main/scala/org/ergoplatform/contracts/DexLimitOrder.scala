@@ -301,7 +301,9 @@ object DexLimitOrderContracts {
     * R5[Long] - token price of the sell order;
     * Other:
     * - box.tokens should contain only the above mentioned token id;
-    * Matched sell counter orders should be ranged in inputs by their R5 (token price).
+    * Matched sell counter orders should be ranged in the inputs
+    * by the "won" spread (spread = sellOrderTokenPrice - buyOrderTokenPrice if it's won
+    * or spread = 0 if it's lost).
     *
     * Requirements for outputs.
     * Box with bought tokens(return box).
@@ -339,7 +341,9 @@ object DexLimitOrderContracts {
     * R4[Coll[Byte]] - token id of the sell order;
     * R5[Long] - token price of the sell order;
     * R6[Long] - dex fee per token;
-    * Matched buy counter orders should be ranged in inputs by their R5 (token price).
+    * Matched buy counter orders should be ranged in the inputs
+    * by the "won" spread (spread = buyOrderTokenPrice - sellOrderTokenPrice if it's won
+    * or spread = 0 if it's lost).
     *
     * Requirements for outputs.
     * Box with ERGs for sold tokens(return box).
