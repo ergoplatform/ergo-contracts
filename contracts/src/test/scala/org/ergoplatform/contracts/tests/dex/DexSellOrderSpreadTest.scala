@@ -178,26 +178,66 @@ class DexSellOrderSpreadTest
 
   property("mixed buy orders height") {
     val sellerTokenPrice        = 20000000L
-    val sellerTokenAmount       = 100L
+    val sellerTokenAmount       = 99L
     val sellOrderCreationHeight = 100
 
+    val buyOrderWithSpread2 = BuyOrder(
+      sellerTokenPrice + 2,
+      sellerTokenAmount / 3,
+      sellOrderCreationHeight + 1
+    )
+
+    val buyOrderWithSpread1 = BuyOrder(
+      sellerTokenPrice + 1,
+      sellerTokenAmount / 3,
+      sellOrderCreationHeight + 1
+    )
+
+    // Although the price is the highest spread is not ours (height < sell order's height)
+    val buyOrderWithSpread0 = BuyOrder(
+      sellerTokenPrice + 5,
+      sellerTokenAmount / 3,
+      sellOrderCreationHeight - 1
+    )
+
+    // fine (box with lost spread is last)
     checkSpread(
       sellerTokenPrice,
       sellerTokenAmount,
       sellOrderCreationHeight,
       IndexedSeq(
-        BuyOrder(
-          sellerTokenPrice + 2,
-          sellerTokenAmount / 2,
-          sellOrderCreationHeight + 1
-        ),
-        BuyOrder(
-          sellerTokenPrice + 1,
-          sellerTokenAmount / 2,
-          sellOrderCreationHeight
-        )
+        buyOrderWithSpread2,
+        buyOrderWithSpread1,
+        buyOrderWithSpread0
       ),
-      receivedSpread = (sellerTokenAmount / 2) * 2
+      receivedSpread = (sellerTokenAmount / 3) * 2 + (sellerTokenAmount / 3) * 1
     ) shouldBe true
+
+    // fail (first box with lost spread)
+    checkSpread(
+      sellerTokenPrice,
+      sellerTokenAmount,
+      sellOrderCreationHeight,
+      IndexedSeq(
+        buyOrderWithSpread0,
+        buyOrderWithSpread2,
+        buyOrderWithSpread1
+      ),
+      receivedSpread = (sellerTokenAmount / 3) * 2 + (sellerTokenAmount / 3) * 1
+    ) shouldBe false
+
+    // also fail (box with lost spread before the box with won spread)
+    checkSpread(
+      sellerTokenPrice,
+      sellerTokenAmount,
+      sellOrderCreationHeight,
+      IndexedSeq(
+        buyOrderWithSpread2,
+        buyOrderWithSpread0,
+        buyOrderWithSpread1
+      ),
+      receivedSpread = (sellerTokenAmount / 3) * 2 + (sellerTokenAmount / 3) * 1
+    ) shouldBe false
   }
+
 }
