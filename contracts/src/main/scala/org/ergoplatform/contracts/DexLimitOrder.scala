@@ -166,7 +166,9 @@ private object DexLimitOrderErgoScript {
       val selfTokenAmount = SELF.tokens(0)._2
 
       val returnBoxes = OUTPUTS.filter { (b: Box) => 
-        b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == SELF.id && b.propositionBytes == sellerPk.propBytes
+        val referencesMe = b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == SELF.id
+        val canSpend = b.propositionBytes == sellerPk.propBytes
+        referencesMe && canSpend      
       }
 
       val boxesAreSortedByTokenPrice = { (boxes: Coll[Box]) => 
@@ -185,17 +187,22 @@ private object DexLimitOrderErgoScript {
         }
       }
 
-      returnBoxes.size == 1 && spendingBuyOrders.size > 0 && boxesAreSortedByTokenPrice(spendingBuyOrders) && {
+      returnBoxes.size == 1 && 
+        spendingBuyOrders.size > 0 && 
+        boxesAreSortedByTokenPrice(spendingBuyOrders) && {
+
         val returnBox = returnBoxes(0)
 
-        val foundNewOrderBoxes = OUTPUTS.filter { (b: Box) => 
-          val tokenIdParameterIsCorrect = b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == tokenId 
-          val tokenPriceParameterIsCorrect = b.R5[Long].isDefined && b.R5[Long].get == tokenPrice
-          val dexFeePerTokenParameterIsCorrect = b.R6[Long].isDefined && b.R6[Long].get == dexFeePerToken
-          val contractParametersAreCorrect = tokenIdParameterIsCorrect && tokenPriceParameterIsCorrect && dexFeePerTokenParameterIsCorrect
+        val foundResidualOrderBoxes = OUTPUTS.filter { (b: Box) => 
+          val tokenIdParamIsCorrect = b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == tokenId 
+          val tokenPriceParamIsCorrect = b.R5[Long].isDefined && b.R5[Long].get == tokenPrice
+          val dexFeePerTokenParamIsCorrect = b.R6[Long].isDefined && b.R6[Long].get == dexFeePerToken
+          val contractParamsAreCorrect = tokenIdParamIsCorrect && 
+            tokenPriceParamIsCorrect && 
+            dexFeePerTokenParamIsCorrect
           val referenceMe = b.R7[Coll[Byte]].isDefined && b.R7[Coll[Byte]].get == SELF.id 
           val guardedByTheSameContract = b.propositionBytes == SELF.propositionBytes
-          contractParametersAreCorrect && referenceMe && guardedByTheSameContract
+          contractParamsAreCorrect && referenceMe && guardedByTheSameContract
         }
 
         val fullSpread = { (tokenAmount: Long) =>
@@ -205,7 +212,8 @@ private object DexLimitOrderErgoScript {
             val buyOrderTokenPrice = buyOrder.R5[Long].get
             val buyOrderDexFeePerToken = buyOrder.R6[Long].get
             val buyOrderTokenAmount = buyOrder.value / (buyOrderTokenPrice + buyOrderDexFeePerToken)
-            if (buyOrder.creationInfo._1 > SELF.creationInfo._1 && buyOrderTokenPrice <= tokenPrice) {
+            val priceIsCorrect = buyOrderTokenPrice <= tokenPrice
+            if (buyOrder.creationInfo._1 > SELF.creationInfo._1 && priceIsCorrect) {
               // spread is ours
               val spreadPerToken = tokenPrice - buyOrderTokenPrice
               val tokenAmountLeft = min(returnTokensLeft, buyOrderTokenAmount)
@@ -222,8 +230,8 @@ private object DexLimitOrderErgoScript {
         val totalMatching = (returnBox.value == selfTokenAmount * tokenPrice + fullSpread(selfTokenAmount))
 
         val partialMatching = {
-          foundNewOrderBoxes.size == 1 && {
-            val newOrderBox = foundNewOrderBoxes(0)
+          foundResidualOrderBoxes.size == 1 && {
+            val newOrderBox = foundResidualOrderBoxes(0)
             val newOrderTokenData = newOrderBox.tokens(0)
             val newOrderTokenAmount = newOrderTokenData._2
             val soldTokenAmount = selfTokenAmount - newOrderTokenAmount
@@ -234,8 +242,11 @@ private object DexLimitOrderErgoScript {
             val tokenIdIsCorrect = newOrderTokenId == tokenId
 
             val newOrderValueIsCorrect = newOrderBox.value == (SELF.value - expectedDexFee)
-            val returnBoxValueIsCorrect = returnBox.value == soldTokenAmount * tokenPrice + fullSpread(soldTokenAmount)
-            tokenIdIsCorrect && soldTokenAmount >= 1 && newOrderValueIsCorrect && returnBoxValueIsCorrect
+            val returnBoxValueIsCorrect = returnBox.value == minSoldTokenErgValue + fullSpread(soldTokenAmount)
+            tokenIdIsCorrect && 
+              soldTokenAmount >= 1 && 
+              newOrderValueIsCorrect && 
+              returnBoxValueIsCorrect
           }
         }
 
