@@ -108,16 +108,16 @@ private object DexLimitOrderErgoScript {
             val sellOrderTokenPrice = sellOrder.R5[Long].get
             val sellOrderTokenAmount = sellOrder.tokens(0)._2
             val priceIsCorrect = sellOrderTokenPrice <= tokenPrice
+            val tokenAmountFromThisOrder = min(returnTokensLeft, sellOrderTokenAmount)
             if (sellOrder.creationInfo._1 >= SELF.creationInfo._1 && priceIsCorrect) {
               // spread is ours
               val spreadPerToken = tokenPrice - sellOrderTokenPrice
-              val tokenAmount = min(returnTokensLeft, sellOrderTokenAmount)
-              val sellOrderSpread = spreadPerToken * tokenAmount
-              (returnTokensLeft - tokenAmount, accumulatedFullSpread + sellOrderSpread)
+              val sellOrderSpread = spreadPerToken * tokenAmountFromThisOrder
+              (returnTokensLeft - tokenAmountFromThisOrder, accumulatedFullSpread + sellOrderSpread)
             }
             else {
               // spread is not ours
-              (returnTokensLeft - min(returnTokensLeft, sellOrderTokenAmount), accumulatedFullSpread)
+              (returnTokensLeft - tokenAmountFromThisOrder, accumulatedFullSpread)
             }
           })._2
         }
@@ -213,16 +213,16 @@ private object DexLimitOrderErgoScript {
             val buyOrderDexFeePerToken = buyOrder.R6[Long].get
             val buyOrderTokenAmount = buyOrder.value / (buyOrderTokenPrice + buyOrderDexFeePerToken)
             val priceIsCorrect = buyOrderTokenPrice <= tokenPrice
+            val tokenAmountInThisOrder = min(returnTokensLeft, buyOrderTokenAmount)
             if (buyOrder.creationInfo._1 > SELF.creationInfo._1 && priceIsCorrect) {
               // spread is ours
               val spreadPerToken = tokenPrice - buyOrderTokenPrice
-              val tokenAmountLeft = min(returnTokensLeft, buyOrderTokenAmount)
-              val buyOrderSpread = spreadPerToken * tokenAmountLeft
-              (returnTokensLeft - tokenAmountLeft, accumulatedFullSpread + buyOrderSpread)
+              val buyOrderSpread = spreadPerToken * tokenAmountInThisOrder
+              (returnTokensLeft - tokenAmountInThisOrder, accumulatedFullSpread + buyOrderSpread)
             }
             else {
               // spread is not ours
-              (returnTokensLeft - min(returnTokensLeft, buyOrderTokenAmount), accumulatedFullSpread)
+              (returnTokensLeft - tokenAmountInThisOrder, accumulatedFullSpread)
             }
           })._2
         }
