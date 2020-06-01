@@ -34,6 +34,6 @@ trait DexTestingCommons extends SigmaTestingCommons {
 
   val maxTokenAmount          = 1000L
   val buyerContractCostLimit  = 120000L
-  val sellerContractCostLimit = 120000L
+  val sellerContractCostLimit = 125000L
 
 }

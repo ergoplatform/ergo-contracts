@@ -72,18 +72,31 @@ private object DexLimitOrderErgoScript {
         referencesMe&& canSpend      
       }
 
-      val boxesAreSortedByTokenPrice = { (boxes: Coll[Box]) => 
-        boxes.fold((0L, true), { (t: (Long, Boolean), box: Box) => 
-          val prevBoxTokenPrice = t._1
-          val isSorted = t._2
-          val boxTokenPrice = box.R5[Long].getOrElse(0L)
-          (boxTokenPrice, isSorted && boxTokenPrice >= prevBoxTokenPrice)
-        })._2
+      val spreadIsMine = { (counterOrderBoxHeight: Int) => 
+        // greater or equal since only a strict greater gives win in sell order contract
+        counterOrderBoxHeight >= SELF.creationInfo._1 
+      }
+
+      val boxesAreSortedBySpread = { (boxes: Coll[Box]) => 
+        boxes.size > 0 && {
+          val alledgedlyTopSpread = if (spreadIsMine(boxes(0).creationInfo._1)) { 
+            tokenPrice - boxes(0).R5[Long].getOrElse(0L)
+          } else { 0L }
+          boxes.fold((alledgedlyTopSpread, true), { (t: (Long, Boolean), box: Box) => 
+            val prevSpread = t._1
+            val isSorted = t._2
+            val boxTokenPrice = box.R5[Long].getOrElse(0L)
+            val spread = if (spreadIsMine(box.creationInfo._1)) { 
+              tokenPrice - boxTokenPrice 
+            } else { 0L }
+            (spread, isSorted && spread <= prevSpread)
+          })._2 
+        }
       }
 
       returnBoxes.size == 1 && 
         spendingSellOrders.size > 0 && 
-        boxesAreSortedByTokenPrice(spendingSellOrders) && {
+        boxesAreSortedBySpread(spendingSellOrders) && {
 
         val returnBox = returnBoxes(0)
         val returnTokenAmount = if (returnBox.tokens.size == 1) returnBox.tokens(0)._2 else 0L
@@ -109,7 +122,7 @@ private object DexLimitOrderErgoScript {
             val sellOrderTokenAmount = sellOrder.tokens(0)._2
             val priceIsCorrect = sellOrderTokenPrice <= tokenPrice
             val tokenAmountFromThisOrder = min(returnTokensLeft, sellOrderTokenAmount)
-            if (sellOrder.creationInfo._1 >= SELF.creationInfo._1 && priceIsCorrect) {
+            if (spreadIsMine(sellOrder.creationInfo._1) && priceIsCorrect) {
               // spread is ours
               val spreadPerToken = tokenPrice - sellOrderTokenPrice
               val sellOrderSpread = spreadPerToken * tokenAmountFromThisOrder
@@ -171,17 +184,21 @@ private object DexLimitOrderErgoScript {
         referencesMe && canSpend      
       }
 
+      val spreadIsMine = { (counterOrderBoxHeight: Int) => 
+        // strictly greater since equality gives win in buy order contract
+        counterOrderBoxHeight > SELF.creationInfo._1 
+      }
+
       val boxesAreSortedBySpread = { (boxes: Coll[Box]) => 
         boxes.size > 0 && {
-          val alledgedlyTopSpread = if (boxes(0).creationInfo._1 > SELF.creationInfo._1) { 
-            boxes(0).value - tokenPrice 
+          val alledgedlyTopSpread = if (spreadIsMine(boxes(0).creationInfo._1)) { 
+            boxes(0).R5[Long].getOrElse(0L) - tokenPrice 
           } else { 0L }
           boxes.fold((alledgedlyTopSpread, true), { (t: (Long, Boolean), box: Box) => 
             val prevSpread = t._1
             val isSorted = t._2
             val boxTokenPrice = box.R5[Long].getOrElse(0L)
-            val spreadIsMine = box.creationInfo._1 > SELF.creationInfo._1
-            val spread = if (spreadIsMine) { boxTokenPrice - tokenPrice } else { 0L }
+            val spread = if (spreadIsMine(box.creationInfo._1)) { boxTokenPrice - tokenPrice } else { 0L }
             (spread, isSorted && spread <= prevSpread)
           })._2 
         }
@@ -221,7 +238,7 @@ private object DexLimitOrderErgoScript {
             val buyOrderTokenAmount = buyOrder.value / (buyOrderTokenPrice + buyOrderDexFeePerToken)
             val priceIsCorrect = buyOrderTokenPrice >= tokenPrice
             val tokenAmountInThisOrder = min(returnTokensLeft, buyOrderTokenAmount)
-            if (buyOrder.creationInfo._1 > SELF.creationInfo._1 && priceIsCorrect) {
+            if (spreadIsMine(buyOrder.creationInfo._1) && priceIsCorrect) {
               // spread is ours
               val spreadPerToken = buyOrderTokenPrice - tokenPrice
               val buyOrderSpread = spreadPerToken * tokenAmountInThisOrder
@@ -355,10 +372,10 @@ object DexLimitOrderContracts {
       tokenId <- ergoTree.constants.lift(1).collect {
                   case ByteArrayConstant(coll) => coll.toArray
                 }
-      tokenPrice <- ergoTree.constants.lift(13).collect {
+      tokenPrice <- ergoTree.constants.lift(8).collect {
                      case Values.ConstantNode(value, SLong) => value.asInstanceOf[Long]
                    }
-      dexFeePerToken <- ergoTree.constants.lift(14).collect {
+      dexFeePerToken <- ergoTree.constants.lift(20).collect {
                          case Values.ConstantNode(value, SLong) =>
                            value.asInstanceOf[Long]
                        }
@@ -374,10 +391,10 @@ object DexLimitOrderContracts {
       tokenId <- ergoTree.constants.lift(1).collect {
                   case ByteArrayConstant(coll) => coll.toArray
                 }
-      tokenPrice <- ergoTree.constants.lift(8).collect {
+      tokenPrice <- ergoTree.constants.lift(9).collect {
                      case Values.ConstantNode(value, SLong) => value.asInstanceOf[Long]
                    }
-      dexFeePerToken <- ergoTree.constants.lift(19).collect {
+      dexFeePerToken <- ergoTree.constants.lift(20).collect {
                          case Values.ConstantNode(value, SLong) =>
                            value.asInstanceOf[Long]
                        }

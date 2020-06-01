@@ -193,7 +193,7 @@ class DexSellOrderSpreadTest
       sellOrderCreationHeight + 1
     )
 
-    // Although the price is the highest spread is not ours (height < sell order's height)
+    // Although the price is the highest, spread is not ours (height < sell order's height)
     val buyOrderWithSpread0 = BuyOrder(
       sellerTokenPrice + 5,
       sellerTokenAmount / 3,
