@@ -69,7 +69,7 @@ private object DexLimitOrderErgoScript {
       val returnBoxes = OUTPUTS.filter { (b: Box) => 
         val referencesMe = b.R4[Coll[Byte]].isDefined && b.R4[Coll[Byte]].get == SELF.id 
         val canSpend = b.propositionBytes == buyerPk.propBytes
-        referencesMe&& canSpend      
+        referencesMe && canSpend      
       }
 
       val spreadIsMine = { (counterOrderBoxHeight: Int) => 
