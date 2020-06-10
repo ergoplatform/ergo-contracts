@@ -17,7 +17,8 @@ lazy val commonSettings = Seq(
         </developer>
       </developers>,
   publishMavenStyle := true,
-  publishTo := sonatypePublishToBundle.value
+  publishTo := sonatypePublishToBundle.value,
+  parallelExecution in Test := false,
 )
 
 // prefix version with "-SNAPSHOT" for builds without a git tag

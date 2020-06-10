@@ -1,4 +1,4 @@
-package org.ergoplatform.contracts.tests
+package org.ergoplatform.contracts.tests.dex
 
 import org.ergoplatform.contracts.{
   DexBuyerContractParameters,
@@ -12,6 +12,8 @@ import sigmastate.serialization.generators.ObjectGenerators
 import scala.language.implicitConversions
 
 class DexLimitOrderCompilationTest extends SigmaTestingCommons with ObjectGenerators {
+  // fail fast without shrinking
+  import org.scalacheck.Shrink.shrinkAny
 
   property("ErgoScript buyer contract parameters extraction and template test") {
     forAll(
