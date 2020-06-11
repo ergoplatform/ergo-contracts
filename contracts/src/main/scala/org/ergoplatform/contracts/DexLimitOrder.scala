@@ -255,21 +255,21 @@ private object DexLimitOrderErgoScript {
 
         val partialMatching = {
           foundResidualOrderBoxes.size == 1 && {
-            val newOrderBox = foundResidualOrderBoxes(0)
-            val newOrderTokenData = newOrderBox.tokens(0)
-            val newOrderTokenAmount = newOrderTokenData._2
-            val soldTokenAmount = selfTokenAmount - newOrderTokenAmount
+            val residualOrderBox = foundResidualOrderBoxes(0)
+            val residualOrderTokenData = residualOrderBox.tokens(0)
+            val residualOrderTokenAmount = residualOrderTokenData._2
+            val soldTokenAmount = selfTokenAmount - residualOrderTokenAmount
             val minSoldTokenErgValue = soldTokenAmount * tokenPrice
             val expectedDexFee = dexFeePerToken * soldTokenAmount
 
-            val newOrderTokenId = newOrderTokenData._1
-            val tokenIdIsCorrect = newOrderTokenId == tokenId
+            val residualOrderTokenId = residualOrderTokenData._1
+            val tokenIdIsCorrect = residualOrderTokenId == tokenId
 
-            val newOrderValueIsCorrect = newOrderBox.value == (SELF.value - expectedDexFee)
+            val residualOrderValueIsCorrect = residualOrderBox.value == (SELF.value - expectedDexFee)
             val returnBoxValueIsCorrect = returnBox.value == minSoldTokenErgValue + fullSpread(soldTokenAmount)
             tokenIdIsCorrect && 
               soldTokenAmount >= 1 && 
-              newOrderValueIsCorrect && 
+              residualOrderValueIsCorrect && 
               returnBoxValueIsCorrect
           }
         }
