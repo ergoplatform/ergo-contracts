@@ -86,10 +86,11 @@ private object DexLimitOrderErgoScript {
             val prevSpread = t._1
             val isSorted = t._2
             val boxTokenPrice = box.R5[Long].getOrElse(0L)
+            val boxTokenPriceIsCorrect = boxTokenPrice > 0 && boxTokenPrice <= tokenPrice
             val spread = if (spreadIsMine(box.creationInfo._1)) { 
               tokenPrice - boxTokenPrice 
             } else { 0L }
-            (spread, isSorted && spread <= prevSpread)
+            (spread, isSorted && boxTokenPriceIsCorrect && spread <= prevSpread)
           })._2 
         }
       }
@@ -120,9 +121,8 @@ private object DexLimitOrderErgoScript {
             val accumulatedFullSpread = t._2
             val sellOrderTokenPrice = sellOrder.R5[Long].get
             val sellOrderTokenAmount = sellOrder.tokens(0)._2
-            val priceIsCorrect = sellOrderTokenPrice <= tokenPrice
             val tokenAmountFromThisOrder = min(returnTokensLeft, sellOrderTokenAmount)
-            if (spreadIsMine(sellOrder.creationInfo._1) && priceIsCorrect) {
+            if (spreadIsMine(sellOrder.creationInfo._1)) {
               // spread is ours
               val spreadPerToken = tokenPrice - sellOrderTokenPrice
               val sellOrderSpread = spreadPerToken * tokenAmountFromThisOrder
@@ -379,7 +379,7 @@ object DexLimitOrderContracts {
       tokenPrice <- ergoTree.constants.lift(8).collect {
                      case Values.ConstantNode(value, SLong) => value.asInstanceOf[Long]
                    }
-      dexFeePerToken <- ergoTree.constants.lift(20).collect {
+      dexFeePerToken <- ergoTree.constants.lift(22).collect {
                          case Values.ConstantNode(value, SLong) =>
                            value.asInstanceOf[Long]
                        }
