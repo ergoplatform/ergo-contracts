@@ -407,4 +407,149 @@ class DexSellOrderPartialMatchTest
 
   }
 
+  property("sell order partial matching with malicious token price in counter order") {
+    val verifier = new ErgoLikeTestInterpreter
+    val buyerPk =
+      (new ContextEnrichingTestProvingInterpreter).dlogSecrets.head.publicImage
+    val sellerPk =
+      (new ContextEnrichingTestProvingInterpreter).dlogSecrets.head.publicImage
+
+    val tokenId        = tokenIdGen.sample.get
+    val tokenPrice     = 20000000L
+    val dexFeePerToken = 1000000L
+    val tokenAmount    = 99L
+
+    val partialMatchTokenAmount = tokenAmount / 2
+
+    val sellOrderContractParams =
+      DexSellerContractParameters(sellerPk, tokenId, tokenPrice, dexFeePerToken)
+
+    val sellOrderContract =
+      DexLimitOrderContracts.sellerContractInstance(sellOrderContractParams)
+
+    val sellOrderBox = ErgoBox(
+      value            = tokenAmount * dexFeePerToken,
+      ergoTree         = sellOrderContract.ergoTree,
+      creationHeight   = 0,
+      additionalTokens = Seq((Digest32 @@ tokenId, tokenAmount)),
+      additionalRegisters = Map(
+        ErgoBox.R4 -> ByteArrayConstant(tokenId),
+        ErgoBox.R5 -> LongConstant(tokenPrice)
+      )
+    )
+
+    val buyOrderContractParams =
+      DexBuyerContractParameters(buyerPk, tokenId, tokenPrice, dexFeePerToken)
+
+    val buyOrderContract =
+      DexLimitOrderContracts.buyerContractInstance(buyOrderContractParams)
+
+    val correctReturnBoxValue = partialMatchTokenAmount * tokenPrice
+    val correctResidualOrderBoxValue =
+      (tokenAmount - partialMatchTokenAmount) * dexFeePerToken
+    val correctResidualOrderBoxTokenAmount = tokenAmount - partialMatchTokenAmount
+
+    def ctxWithCounterOrderPrices(
+      maliciousTokenPrice: Long,
+      maliciousDexFee: Long,
+      returnBoxValue: Long,
+      residualOrderBoxValue: Long,
+      residualOrderBoxTokenAmount: Long
+    ) = {
+      val returnBox = ErgoBox(
+        value               = returnBoxValue,
+        ergoTree            = sellerPk,
+        creationHeight      = 0,
+        additionalRegisters = Map(ErgoBox.R4 -> ByteArrayConstant(sellOrderBox.id))
+      )
+
+      val residualOrder = ErgoBox(
+        value            = residualOrderBoxValue,
+        ergoTree         = sellOrderContract.ergoTree,
+        creationHeight   = 0,
+        additionalTokens = Seq((Digest32 @@ tokenId, residualOrderBoxTokenAmount)),
+        additionalRegisters = Map(
+          ErgoBox.R4 -> ByteArrayConstant(tokenId),
+          ErgoBox.R5 -> LongConstant(tokenPrice),
+          ErgoBox.R6 -> LongConstant(dexFeePerToken),
+          ErgoBox.R7 -> ByteArrayConstant(sellOrderBox.id)
+        )
+      )
+
+      val buyOrderBox = ErgoBox(
+        value          = 1000L,
+        ergoTree       = buyOrderContract.ergoTree,
+        creationHeight = 1,
+        additionalRegisters = Map(
+          ErgoBox.R4 -> ByteArrayConstant(tokenId),
+          ErgoBox.R5 -> LongConstant(maliciousTokenPrice),
+          ErgoBox.R6 -> LongConstant(maliciousDexFee)
+        )
+      )
+
+      ErgoLikeContextTesting(
+        currentHeight     = 0,
+        lastBlockUtxoRoot = AvlTreeData.dummy,
+        minerPubkey       = ErgoLikeContextTesting.dummyPubkey,
+        boxesToSpend      = IndexedSeq(sellOrderBox, buyOrderBox),
+        spendingTransaction = new ErgoLikeTransaction(
+          IndexedSeq(buyOrderBox, sellOrderBox).map(b => Input(b.id, ProverResult.empty)),
+          IndexedSeq(),
+          IndexedSeq(returnBox, residualOrder)
+        ),
+        self = sellOrderBox
+      )
+    }
+
+    // check if box is spendable with correct parameters
+    verifier
+      .verify(
+        sellOrderBox.ergoTree,
+        ctxWithCounterOrderPrices(
+          tokenPrice,
+          dexFeePerToken,
+          returnBoxValue              = correctReturnBoxValue,
+          residualOrderBoxValue       = correctResidualOrderBoxValue,
+          residualOrderBoxTokenAmount = correctResidualOrderBoxTokenAmount
+        ),
+        ProverResult.empty,
+        fakeMessage
+      )
+      .get
+      ._1 shouldBe true
+
+    // make fullSpread to be == - (tokenAmount * tokenPrice) and trick totalMatching branch
+    verifier
+      .verify(
+        sellOrderBox.ergoTree,
+        ctxWithCounterOrderPrices(
+          maliciousTokenPrice         = 0,
+          maliciousDexFee             = 1,
+          returnBoxValue              = 0,
+          residualOrderBoxValue       = 1,
+          residualOrderBoxTokenAmount = 1
+        ),
+        ProverResult.empty,
+        fakeMessage
+      )
+      .get
+      ._1 shouldBe false
+
+    // try to overflow fullSpread
+    verifier
+      .verify(
+        sellOrderBox.ergoTree,
+        ctxWithCounterOrderPrices(
+          maliciousTokenPrice         = Long.MaxValue,
+          maliciousDexFee             = -Long.MinValue + 2,
+          returnBoxValue              = correctReturnBoxValue,
+          residualOrderBoxValue       = correctResidualOrderBoxValue,
+          residualOrderBoxTokenAmount = correctResidualOrderBoxTokenAmount
+        ),
+        ProverResult.empty,
+        fakeMessage
+      )
+      .get
+      ._1 shouldBe false
+  }
 }
