@@ -16,7 +16,7 @@ jobs:
         env:
           GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
       - name: Publish release ${{ github.ref }}
-        run: sbt publishSigned sonatypeBundleRelease
+        run: sbt contracts/publishSigned sonatypeBundleRelease
         env:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
