@@ -9,6 +9,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: olafurpg/setup-scala@v5
+      - name: Install Z3 prover
+        run: curl -fsSL https://github.com/Z3Prover/z3/releases/download/z3-4.8.7/z3-4.8.7-x64-ubuntu-16.04.zip -o z3-4.8.7-x64-ubuntu-16.04.zip; unzip -j z3-4.8.7-x64-ubuntu-16.04.zip -d z3_downloaded; export PATH=$PATH:$(pwd)/z3_downloaded; z3 --version;
       - name: Import GPG key
         run: ci/import_gpg.sh
         env:
