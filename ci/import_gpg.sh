@@ -12,6 +12,9 @@ chmod 600 ~/.gnupg/*
 echo RELOADAGENT | gpg-connect-agent
 
 # decode key
+# private key should be previously exported with:
+# gpg --export-secret-keys [id] | base64 | pbcopy
+# and stored as github repository secret under the following name (see env var name below)
 printf "$GPG_SIGNING_KEY" | base64 --decode > ~/.gnupg/private.key
 
 # import key
