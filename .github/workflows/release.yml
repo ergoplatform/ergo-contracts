@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: olafurpg/setup-scala@v5
       - name: Run tests
-        run: sbt test
+        run: sbt contracts/test
 
   publish_release:
     name: Publish release to Sonatype
