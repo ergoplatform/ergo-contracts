@@ -1,12 +1,10 @@
 name: Release
 on:
   push:
-    branches: ["**"]
-    tags: ["**"]
+    tags: ["v*"]
 jobs:
   publish_release:
     name: Publish release to Sonatype
-    # if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
