@@ -1,7 +1,5 @@
 name: Snapshot
 on:
-  pull_request:
-    branches: ["*"]
   push:
     branches: ["*"]
     tags-ignore: ["v*"]
