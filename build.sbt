@@ -7,7 +7,7 @@ lazy val commonSettings = Seq(
   resolvers += Resolver.sonatypeRepo("public"),
   licenses := Seq("CC0" -> url("https://creativecommons.org/publicdomain/zero/1.0/legalcode")),
   homepage := Some(url("https://github.com/ergoplatform/ergo-contracts")),
-  description := "Ergo contracts with verified properties",
+  description := "Ergo contracts",
   pomExtra :=
       <developers>
         <developer>
@@ -19,6 +19,12 @@ lazy val commonSettings = Seq(
   publishMavenStyle := true,
   publishTo := sonatypePublishToBundle.value,
   parallelExecution in Test := false,
+  scmInfo := Some(
+    ScmInfo(
+      url("https://github.com/ergoplatform/ergo-contracts"),
+      "scm:git@github.com:ergoplatform/ergo-contracts.git"
+    )
+  ),
 )
 
 // prefix version with "-SNAPSHOT" for builds without a git tag
