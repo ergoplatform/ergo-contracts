@@ -404,12 +404,21 @@ object DexLimitOrderContracts {
                        }
     } yield DexSellerContractParameters(pk, tokenId, tokenPrice, dexFeePerToken)
 
+  // remove after sigmastate v3.2.2+ is released and use ergoTree.template
+  def ergoTreeTemplate(ergoTree: ErgoTree): Array[Byte] = {
+    import sigmastate.serialization.SigmaSerializer
+    import sigmastate.serialization.ErgoTreeSerializer.DefaultSerializer
+    val bytes = DefaultSerializer.serializeErgoTree(ergoTree)
+    val r     = SigmaSerializer.startReader(bytes)
+    DefaultSerializer.deserializeHeaderWithTreeBytes(r)._4
+  }
+
   lazy val buyerContractErgoTreeTemplate: Array[Byte] = {
     val tokenId = Array.fill(ErgoBox.TokenId.size)(0.toByte)
     val pk      = ProveDlog(CryptoConstants.dlogGroup.createRandomElement())
     val params  = DexBuyerContractParameters(pk, tokenId, 2L, 2L)
     val c       = DexLimitOrderErgoScript.buyerContract(params)
-    c.ergoTree.template
+    ergoTreeTemplate(c.ergoTree)
   }
 
   lazy val sellerContractErgoTreeTemplate: Array[Byte] = {
@@ -417,7 +426,7 @@ object DexLimitOrderContracts {
     val pk      = ProveDlog(CryptoConstants.dlogGroup.createRandomElement())
     val params  = DexSellerContractParameters(pk, tokenId, 2L, 2L)
     val c       = DexLimitOrderErgoScript.sellerContract(params)
-    c.ergoTree.template
+    ergoTreeTemplate(c.ergoTree)
   }
 
 }
