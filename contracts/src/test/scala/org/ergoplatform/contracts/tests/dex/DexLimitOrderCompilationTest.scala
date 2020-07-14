@@ -32,7 +32,8 @@ class DexLimitOrderCompilationTest extends SigmaTestingCommons with ObjectGenera
           .parseBuyerContractParameters(ergoTree)
           .get shouldEqual params
 
-        DexLimitOrderContracts.buyerContractErgoTreeTemplate shouldEqual ergoTree.template
+        DexLimitOrderContracts.buyerContractErgoTreeTemplate shouldEqual DexLimitOrderContracts
+          .ergoTreeTemplate(ergoTree)
     }
   }
 
@@ -53,7 +54,8 @@ class DexLimitOrderCompilationTest extends SigmaTestingCommons with ObjectGenera
           .parseSellerContractParameters(ergoTree)
           .get shouldEqual params
 
-        DexLimitOrderContracts.sellerContractErgoTreeTemplate shouldEqual ergoTree.template
+        DexLimitOrderContracts.sellerContractErgoTreeTemplate shouldEqual DexLimitOrderContracts
+          .ergoTreeTemplate(ergoTree)
     }
   }
 }
