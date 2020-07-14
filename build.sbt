@@ -108,8 +108,8 @@ lazy val commonScalacOptions = List(
 // signing is done by sbt-pgp plugin
 // how to generate a key - https://central.sonatype.org/pages/working-with-pgp-signatures.html
 // how to export a key and use it with Travis - https://docs.scala-lang.org/overviews/contributors/index.html#export-your-pgp-key-pair
-pgpPublicRing := file("ci/pubring.asc")
-pgpSecretRing := file("~/.gnupg/privage.key")
+// public key should be submitted to any public key server e.g. http://pgp.mit.edu/pks/add
+// on macOS: gpg --armor --export [id] | pbcopy
 pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toArray)
 usePgpKeyHex("8F2E12DE4EA7C643801166B5161DA7E917ECFC15")
 
