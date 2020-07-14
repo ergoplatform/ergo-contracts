@@ -111,7 +111,7 @@ class DexBuyOrderTotalMatchTest
     }
   }
 
-  property("buy order total matching, wrong token id") {
+  property("buy order total matching, wrong token id in return box") {
     val verifier = new ErgoLikeTestInterpreter
     val buyerPk =
       (new ContextEnrichingTestProvingInterpreter).dlogSecrets.head.publicImage
@@ -276,5 +276,145 @@ class DexBuyOrderTotalMatchTest
       )
       .get
       ._1 shouldBe false
+  }
+
+  property("buy order total matching, wrong box id in R4 in return box") {
+    val verifier = new ErgoLikeTestInterpreter
+    val buyerPk =
+      (new ContextEnrichingTestProvingInterpreter).dlogSecrets.head.publicImage
+    val sellerPk =
+      (new ContextEnrichingTestProvingInterpreter).dlogSecrets.head.publicImage
+
+    val tokenId        = tokenIdGen.sample.get
+    val tokenPrice     = 20000000L
+    val dexFeePerToken = 1000000L
+    val tokenAmount    = 99L
+
+    val buyOrderContractParams =
+      DexBuyerContractParameters(buyerPk, tokenId, tokenPrice, dexFeePerToken)
+
+    val buyOrderContract =
+      DexLimitOrderContracts.buyerContractInstance(buyOrderContractParams)
+
+    val selfBox = ErgoBox(
+      value          = tokenAmount * (tokenPrice + dexFeePerToken),
+      ergoTree       = buyOrderContract.ergoTree,
+      creationHeight = 0
+    )
+
+    val sellOrderContractParams =
+      DexSellerContractParameters(sellerPk, tokenId, tokenPrice, dexFeePerToken)
+
+    val sellOrderContract =
+      DexLimitOrderContracts.sellerContractInstance(sellOrderContractParams)
+
+    val sellOrderBox = ErgoBox(
+      value            = tokenAmount * dexFeePerToken,
+      ergoTree         = sellOrderContract.ergoTree,
+      creationHeight   = 0,
+      additionalTokens = Seq((Digest32 @@ tokenId, tokenAmount)),
+      additionalRegisters = Map(
+        ErgoBox.R4 -> ByteArrayConstant(tokenId),
+        ErgoBox.R5 -> LongConstant(tokenPrice)
+      )
+    )
+
+    val returnBox = ErgoBox(
+      value               = 1,
+      ergoTree            = buyerPk,
+      creationHeight      = 0,
+      additionalTokens    = Seq((tokenId, tokenAmount)),
+      additionalRegisters = Map(ErgoBox.R4 -> ByteArrayConstant(sellOrderBox.id))
+    )
+
+    val tx = new ErgoLikeTransaction(
+      IndexedSeq(sellOrderBox).map(b => Input(b.id, ProverResult.empty)),
+      IndexedSeq(),
+      IndexedSeq(returnBox)
+    )
+
+    val context = ErgoLikeContextTesting(
+      currentHeight       = 0,
+      lastBlockUtxoRoot   = AvlTreeData.dummy,
+      minerPubkey         = ErgoLikeContextTesting.dummyPubkey,
+      boxesToSpend        = IndexedSeq(sellOrderBox, selfBox),
+      spendingTransaction = tx,
+      self                = selfBox
+    )
+
+    val (res, cost) = verifier
+      .verify(selfBox.ergoTree, context, ProverResult.empty, fakeMessage)
+      .get
+    res shouldBe false
+  }
+
+  property("buy order total matching, return box with non-buyer PK") {
+    val verifier = new ErgoLikeTestInterpreter
+    val buyerPk =
+      (new ContextEnrichingTestProvingInterpreter).dlogSecrets.head.publicImage
+    val sellerPk =
+      (new ContextEnrichingTestProvingInterpreter).dlogSecrets.head.publicImage
+
+    val tokenId        = tokenIdGen.sample.get
+    val tokenPrice     = 20000000L
+    val dexFeePerToken = 1000000L
+    val tokenAmount    = 99L
+
+    val buyOrderContractParams =
+      DexBuyerContractParameters(buyerPk, tokenId, tokenPrice, dexFeePerToken)
+
+    val buyOrderContract =
+      DexLimitOrderContracts.buyerContractInstance(buyOrderContractParams)
+
+    val selfBox = ErgoBox(
+      value          = tokenAmount * (tokenPrice + dexFeePerToken),
+      ergoTree       = buyOrderContract.ergoTree,
+      creationHeight = 0
+    )
+
+    val sellOrderContractParams =
+      DexSellerContractParameters(sellerPk, tokenId, tokenPrice, dexFeePerToken)
+
+    val sellOrderContract =
+      DexLimitOrderContracts.sellerContractInstance(sellOrderContractParams)
+
+    val sellOrderBox = ErgoBox(
+      value            = tokenAmount * dexFeePerToken,
+      ergoTree         = sellOrderContract.ergoTree,
+      creationHeight   = 0,
+      additionalTokens = Seq((Digest32 @@ tokenId, tokenAmount)),
+      additionalRegisters = Map(
+        ErgoBox.R4 -> ByteArrayConstant(tokenId),
+        ErgoBox.R5 -> LongConstant(tokenPrice)
+      )
+    )
+
+    val returnBox = ErgoBox(
+      value               = 1,
+      ergoTree            = sellerPk,
+      creationHeight      = 0,
+      additionalTokens    = Seq((tokenId, tokenAmount)),
+      additionalRegisters = Map(ErgoBox.R4 -> ByteArrayConstant(selfBox.id))
+    )
+
+    val tx = new ErgoLikeTransaction(
+      IndexedSeq(sellOrderBox).map(b => Input(b.id, ProverResult.empty)),
+      IndexedSeq(),
+      IndexedSeq(returnBox)
+    )
+
+    val context = ErgoLikeContextTesting(
+      currentHeight       = 0,
+      lastBlockUtxoRoot   = AvlTreeData.dummy,
+      minerPubkey         = ErgoLikeContextTesting.dummyPubkey,
+      boxesToSpend        = IndexedSeq(sellOrderBox, selfBox),
+      spendingTransaction = tx,
+      self                = selfBox
+    )
+
+    val (res, cost) = verifier
+      .verify(selfBox.ergoTree, context, ProverResult.empty, fakeMessage)
+      .get
+    res shouldBe false
   }
 }
