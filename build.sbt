@@ -33,8 +33,8 @@ dynverSonatypeSnapshots in ThisBuild := true
 dynverSeparator in ThisBuild := "-"
 
 lazy val allConfigDependency = "compile->compile;test->test"
-val sigmaStateVersion = "add-ergotree-template-0e547557-SNAPSHOT"
-val ergoScalaCompilerVersion = "0.0.0-43-c9e132dc-SNAPSHOT"
+val sigmaStateVersion = "3.2.1"
+val ergoScalaCompilerVersion = "0.1.0"
 
 lazy val dependencies = Seq(
   "org.ergoplatform" %% "ergo-scala-compiler" % ergoScalaCompilerVersion,
