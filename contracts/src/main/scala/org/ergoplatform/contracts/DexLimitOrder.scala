@@ -281,7 +281,7 @@ private object DexLimitOrderErgoScript {
         // branch for total matching (all tokens are sold and full amount ERGs received)
         val totalMatching = (returnBox.value == selfTokenAmount * tokenPrice + fullSpread(selfTokenAmount))
 
-        // branch for partial matching, e.g. besides received ERGs we demand a new buy order with tokens for 
+        // branch for partial matching, e.g. besides received ERGs we demand a new sell order with tokens for 
         // non-matched part of this order
         val partialMatching = {
           foundResidualOrderBoxes.size == 1 && {
