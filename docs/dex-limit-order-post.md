@@ -100,6 +100,149 @@ For buy order:
 - Token value (token amount * token price, in ERGs) buyer receives in this swap transaction have to be equal to the value of the current box(order) minus DEX fee.
 `val totalMatching = (SELF.value - expectedDexFee) == (returnTokenAmount * tokenPrice) && returnBox.value >= fullSpread`
 
-## Spread 
-TBD
+## Bid-Ask spread 
+### Counter orders sorting check
+The spread is the difference between the buy(bid) order price and sell(ask) order price. We want to make sure that if there is a spread, the "older" order gets it.
+For this contract requires the counter orders (spending orders) have to be ordered by spread amount. So that ones with a bigger spread will be "consumed" first.
+In buy order contract:
+```
+// check if this order should get the spread for a given counter order(height)
+val spreadIsMine = { (counterOrderBoxHeight: Int) => 
+// greater or equal since only a strict greater gives win in sell order contract
+// Denys: we have to decide who gets the spread if height is equal, without any reason I chose buy order
+counterOrderBoxHeight >= SELF.creationInfo._1 
+}
 
+// check that counter(sell) orders are sorted by spread in INPUTS
+// so that the bigger(top) spread will be "consumed" first
+val sellOrderBoxesAreSortedBySpread = { (boxes: Coll[Box]) => 
+boxes.size > 0 && {
+  val alledgedlyTopSpread = if (spreadIsMine(boxes(0).creationInfo._1)) { 
+    tokenPrice - boxes(0).R5[Long].getOrElse(0L)
+  } else { 0L }
+  boxes.fold((alledgedlyTopSpread, true), { (t: (Long, Boolean), box: Box) => 
+    val prevSpread = t._1
+    val isSorted = t._2
+    val boxTokenPrice = box.R5[Long].getOrElse(0L)
+    val boxTokenPriceIsCorrect = boxTokenPrice > 0 && boxTokenPrice <= tokenPrice
+    val spread = if (spreadIsMine(box.creationInfo._1)) { 
+      tokenPrice - boxTokenPrice 
+    } else { 0L }
+    (spread, isSorted && boxTokenPriceIsCorrect && spread <= prevSpread)
+  })._2 
+}
+}
+```
+We also check the declared token price in the `R5` register of the counter sell orders is in the correct range to prevent exploiting arithmetic overflow and other similar attacks.
+
+In sell order contract:
+
+```
+// check if this order should get the spread for a given counter order(height)
+val spreadIsMine = { (counterOrderBoxHeight: Int) => 
+// strictly greater since equality gives win in buy order contract
+// Denys: we have to decide who gets the spread if height is equal, without any reason I chose buy order
+counterOrderBoxHeight > SELF.creationInfo._1 
+}
+
+// check that counter(buy) orders are sorted by spread in INPUTS
+// so that the bigger(top) spread will be "consumed" first
+val buyOrderBoxesAreSortedBySpread = { (boxes: Coll[Box]) => 
+boxes.size > 0 && {
+  val alledgedlyTopSpread = if (spreadIsMine(boxes(0).creationInfo._1)) { 
+    boxes(0).R5[Long].getOrElse(0L) - tokenPrice 
+  } else { 0L }
+  boxes.fold((alledgedlyTopSpread, true), { (t: (Long, Boolean), box: Box) => 
+    val prevSpread = t._1
+    val isSorted = t._2
+    val boxTokenPrice = box.R5[Long].getOrElse(0L)
+    // although buy order's DEX fee is not used here, we check if its positive as a part of sanity check
+    val boxDexFeePerToken = box.R6[Long].getOrElse(0L)
+    val spread = if (spreadIsMine(box.creationInfo._1)) { boxTokenPrice - tokenPrice } else { 0L }
+    (spread, isSorted && boxTokenPrice >= tokenPrice && boxDexFeePerToken > 0L && spread <= prevSpread)
+  })._2 
+}
+}
+```
+We also check the declared token price in the `R5` register, and DEX fee per token in `R6` of the counter buy orders is in the correct range.
+
+### Spread calculation
+To check that the current order gets its spread, we need to calculate it first. With counter orders sorted by the spread amount, we start to "consume" them in that order, decreasing the number of tokens left in this match. 
+In buy order contract:
+```
+// aggregated spread we get from all counter(sell) orders
+val fullSpread = {
+  spendingSellOrders.fold((returnTokenAmount, 0L), { (t: (Long, Long), sellOrder: Box) => 
+    val returnTokensLeft = t._1
+    val accumulatedFullSpread = t._2
+    val sellOrderTokenPrice = sellOrder.R5[Long].get
+    val sellOrderTokenAmount = sellOrder.tokens(0)._2
+    val tokenAmountFromThisOrder = min(returnTokensLeft, sellOrderTokenAmount)
+    if (spreadIsMine(sellOrder.creationInfo._1)) {
+      // spread is ours
+      val spreadPerToken = tokenPrice - sellOrderTokenPrice
+      val sellOrderSpread = spreadPerToken * tokenAmountFromThisOrder
+      (returnTokensLeft - tokenAmountFromThisOrder, accumulatedFullSpread + sellOrderSpread)
+    }
+    else {
+      // spread is not ours
+      (returnTokensLeft - tokenAmountFromThisOrder, accumulatedFullSpread)
+    }
+  })._2
+}
+```
+
+In sell order contract we need to relay on both token price and DEX fee amount to calculate how many tokens are in that buy order. Besides that, since we cannot deduce token amount "sold" in this swap transaction from the return box value we make spread calculation parametrized with concrete token amount that we will know later in the code:
+
+```
+// aggregated spread we get from all counter(buy) orders
+val fullSpread = { (tokenAmount: Long) =>
+  spendingBuyOrders.fold((tokenAmount, 0L), { (t: (Long, Long), buyOrder: Box) => 
+    val returnTokensLeft = t._1
+    val accumulatedFullSpread = t._2
+    val buyOrderTokenPrice = buyOrder.R5[Long].get
+    val buyOrderDexFeePerToken = buyOrder.R6[Long].get
+    val buyOrderTokenAmountCapacity = buyOrder.value / (buyOrderTokenPrice + buyOrderDexFeePerToken)
+    val tokenAmountInThisOrder = min(returnTokensLeft, buyOrderTokenAmountCapacity)
+    if (spreadIsMine(buyOrder.creationInfo._1)) {
+      // spread is ours
+      val spreadPerToken = buyOrderTokenPrice - tokenPrice
+      val buyOrderSpread = spreadPerToken * tokenAmountInThisOrder
+      (returnTokensLeft - tokenAmountInThisOrder, accumulatedFullSpread + buyOrderSpread)
+    }
+    else {
+      // spread is not ours
+      (returnTokensLeft - tokenAmountInThisOrder, accumulatedFullSpread)
+    }
+  })._2
+}
+```
+
+### Check received spread
+With the spread amount determined, we need to check if the current order is indeed received the spread.
+In buy order contract we check that it's included in return box value:
+```
+// branch for total matching (all ERGs are spent and correct amount of tokens is bought)
+val totalMatching = (SELF.value - expectedDexFee) == returnTokenValue && 
+  returnBox.value >= fullSpread
+// branch for partial matching, e.g. besides bought tokens we demand a new buy order with ERGs for 
+// non-matched part of this order
+val partialMatching = {
+  val correctResidualOrderBoxValue = (SELF.value - returnTokenValue - expectedDexFee)
+  foundResidualOrderBoxes.size == 1 && 
+    foundResidualOrderBoxes(0).value == correctResidualOrderBoxValue && 
+    returnBox.value >= fullSpread
+}
+```
+
+In the sell order contract, as soon as we know the token amount "sold" in this swap transaction, we check that return box value has the spread included. 
+In total matching case we use total token amount in the current order:
+```
+// branch for total matching (all tokens are sold and full amount ERGs received)
+val totalMatching = (returnBox.value == selfTokenAmount * tokenPrice + fullSpread(selfTokenAmount))
+```
+
+In partial matching case we know the amount of token "sold" from the residual order( `val soldTokenAmount = selfTokenAmount - residualOrderTokenAmount`) and check that the spread is included in the return box value:
+```
+val returnBoxValueIsCorrect = returnBox.value == soldTokenErgValue + fullSpread(soldTokenAmount)
+```        
