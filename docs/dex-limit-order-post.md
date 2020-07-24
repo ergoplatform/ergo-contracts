@@ -1,8 +1,10 @@
 # Decentralized Exchange Contracts on Ergo
 
 Ergo has expressive smart contracts and transactional model which allows for an implementation of trustless DEX protocol, in which signed buy and sell orders can be put into the blockchain independently by buyers and sellers. An off-chain matching service can observe the Ergo blockchain, find matching orders, and submit the swap transaction without knowing any secrets. The matching can be incentivized by DEX reward paid as part of a swap transaction. Anyone who first discover the match of the two orders can create the swap transaction and get a reward in ERGs. Partial matching is supported, meaning that target (buy/sell) order can be executed partially, in which case a new "residual" order(box) has to be created in the same swap transaction. Any order can be canceled anytime by the "owner."
-Sell order contract [source](https://github.com/ergoplatform/ergo-contracts/blob/864bf9ac04916ce9092aa644fe66bcb86d5f4dd0/contracts/src/main/scala/org/ergoplatform/contracts/DexLimitOrder.scala#L193-L310) 
-Buy order contracts [source](https://github.com/ergoplatform/ergo-contracts/blob/864bf9ac04916ce9092aa644fe66bcb86d5f4dd0/contracts/src/main/scala/org/ergoplatform/contracts/DexLimitOrder.scala#L58-L175)
+
+Sell order contract [source](https://github.com/ergoplatform/ergo-contracts/blob/864bf9ac04916ce9092aa644fe66bcb86d5f4dd0/contracts/src/main/scala/org/ergoplatform/contracts/DexLimitOrder.scala#L193-L310).
+
+Buy order contracts [source](https://github.com/ergoplatform/ergo-contracts/blob/864bf9ac04916ce9092aa644fe66bcb86d5f4dd0/contracts/src/main/scala/org/ergoplatform/contracts/DexLimitOrder.scala#L58-L175).
 
 ## Partial matching
 Both contracts have token price and DEX fee parameters encoded on a compilation. This allows us to check the "residual" order assets, ERGs for a buy order, and tokens for a sell order.
@@ -22,6 +24,9 @@ val foundResidualOrderBoxes = OUTPUTS.filter { (b: Box) =>
   contractParamsAreCorrect && referenceMe && guardedByTheSameContract
 }
 ```
+
+[source](https://github.com/ergoplatform/ergo-contracts/blob/e5942fd1971558faa8f9045f3552e9b01fe535e2/contracts/src/main/scala/org/ergoplatform/contracts/DexLimitOrder.scala#L116-L127)
+
 Then, we check that the following properties hold:
 - Value (ERGs) of the "residual" order box is the value of the current box(order) minus ERGs value of the tokens we're receiving in this swap transaction and minus the DEX fee for this swap transaction.
 - Only one "residual" order box is created in this swap transaction.
@@ -41,6 +46,8 @@ val partialMatching = {
     returnBox.value >= fullSpread
 }
 ```
+
+[source](https://github.com/ergoplatform/ergo-contracts/blob/e5942fd1971558faa8f9045f3552e9b01fe535e2/contracts/src/main/scala/org/ergoplatform/contracts/DexLimitOrder.scala#L150-L162)
 
 In the sell order contract, we search for a residual box, checking that it has correct parameters and assets.
 
