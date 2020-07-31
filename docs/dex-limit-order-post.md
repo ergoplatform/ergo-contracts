@@ -1,10 +1,10 @@
 # Decentralized Exchange Contracts on Ergo
 
-Ergo has expressive smart contracts and transactional model which allows for an implementation of trustless DEX protocol, in which signed buy and sell orders can be put into the blockchain independently by buyers and sellers. An off-chain matching service can observe the Ergo blockchain, find matching orders, and submit the swap transaction without knowing any secrets. The matching can be incentivized by DEX reward paid as part of a swap transaction. Anyone who first discover the match of the two orders can create the swap transaction and get a reward in ERGs. Partial matching is supported, meaning that target (buy/sell) order can be executed partially, in which case a new "residual" order(box) has to be created in the same swap transaction. Any order can be canceled anytime by the "owner."
+Ergo has expressive smart contracts and transactional model which allows for an implementation of trustless DEX protocol, in which signed buy and sell orders can be put into the blockchain independently by buyers and sellers. An off-chain matching service can observe the Ergo blockchain, find matching orders, and submit the swap transaction without knowing any secrets. The matching can be incentivized by DEX reward paid as part of a swap transaction. Anyone who first discover the match of the two orders can create the swap transaction and get a reward in ERGs. Partial matching is supported, meaning that target (buy/sell) order can be executed partially, in which case a new "residual" order(box) has to be created in the same swap transaction. Any order can be canceled anytime by the "owner".
 
 Sell order contract [source](https://github.com/ergoplatform/ergo-contracts/blob/864bf9ac04916ce9092aa644fe66bcb86d5f4dd0/contracts/src/main/scala/org/ergoplatform/contracts/DexLimitOrder.scala#L193-L310).
 
-Buy order contracts [source](https://github.com/ergoplatform/ergo-contracts/blob/864bf9ac04916ce9092aa644fe66bcb86d5f4dd0/contracts/src/main/scala/org/ergoplatform/contracts/DexLimitOrder.scala#L58-L175).
+Buy order contract [source](https://github.com/ergoplatform/ergo-contracts/blob/864bf9ac04916ce9092aa644fe66bcb86d5f4dd0/contracts/src/main/scala/org/ergoplatform/contracts/DexLimitOrder.scala#L58-L175).
 
 ## Partial matching
 Both contracts have token price and DEX fee parameters encoded on a compilation. This allows us to check the "residual" order assets, ERGs for a buy order, and tokens for a sell order.
