@@ -348,7 +348,7 @@ object DexLimitOrderContracts {
     * If match is partial the new(residual) buy order box have to be in outputs.
     * There is can be only one such box in the outputs.
     * It should have the following registers set:
-    * - R4[Coll[Byte]] = this buy order box id
+    * - R4[Coll[Byte]] = this buy order token id
     * - R5[Long] = this buy order `tokenPrice`
     * - R6[Long] = this buy order `dexFeePerToken`
     * - R7[Coll[Byte]] = this buy order box id
@@ -387,7 +387,7 @@ object DexLimitOrderContracts {
     * If match is partial the new(residual) sell order box have to be in outputs.
     * There is can be only one such box in the outputs.
     * It should have the following registers set:
-    * - R4[Coll[Byte]] = this sell order box id
+    * - R4[Coll[Byte]] = this sell order token id
     * - R5[Long] = this sell order `tokenPrice`
     * - R6[Long] = this sell order `dexFeePerToken`
     * - R7[Coll[Byte]] = this sell order box id
