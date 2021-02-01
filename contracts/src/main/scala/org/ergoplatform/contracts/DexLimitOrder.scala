@@ -19,6 +19,7 @@ import sigmastate.basics.DLogProtocol.ProveDlogProp
   * @param tokenId token id buyer wants to buy
   * @param tokenPrice price per token in nanoERGs
   * @param dexFeePerToken DEX matcher's reward (per token, nanoERGs)
+  * Keep in mind, that buyer box value should satisfy `box.value % (tokenPrice + dexFeePerToken) == 0` requirement.
   */
 final case class DexBuyerContractParameters(
   buyerPk: ProveDlog,
